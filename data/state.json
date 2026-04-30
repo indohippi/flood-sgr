@@ -1,0 +1,12 @@
+{
+  "notificationState": {
+    "property": {
+      "status": "GREEN",
+      "score": 20,
+      "sentAt": "2026-04-21T23:24:49.825Z",
+      "lastHeadline": "Flood monitor status YELLOW for 2055 FM 971, Georgetown, TX",
+      "generatedAt": "2026-04-30T01:52:18.209Z",
+      "checkedAt": "2026-04-30T01:52:18.209Z"
+    }
+  }
+}

@@ -1,0 +1,2195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>San Gabriel River Watch</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #121b2e;
+      --panel-2: #18243b;
+      --text: #e9f1ff;
+      --muted: #a7b6d6;
+      --green: #1f9d65;
+      --yellow: #caa227;
+      --orange: #d97a23;
+      --red: #cb3a3a;
+      --border: #2c3b5e;
+    }
+    body { margin: 0; font-family: Inter, Arial, sans-serif; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 24px; }
+    h1, h2, h3 { margin: 0 0 12px; }
+    p { color: var(--muted); }
+    .topbar, .grid, .gauges, .two-col { display: grid; gap: 16px; }
+    .topbar { grid-template-columns: 2fr 1fr; }
+    .grid { grid-template-columns: repeat(3, 1fr); }
+    .gauges { grid-template-columns: repeat(3, 1fr); }
+    .two-col { grid-template-columns: 1.2fr 1fr; }
+    .three-col { display:grid; gap:16px; grid-template-columns: repeat(3, 1fr); }
+    .two-gauge-col { display:grid; gap:16px; grid-template-columns: repeat(2, 1fr); }
+    .card { background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: 0 10px 25px rgba(0,0,0,.25); }
+    .status { display: inline-block; padding: 6px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; letter-spacing: .04em; }
+    .GREEN { background: rgba(31,157,101,.18); color: #8cf0c2; }
+    .YELLOW { background: rgba(202,162,39,.18); color: #f8e18d; }
+    .ORANGE { background: rgba(217,122,35,.18); color: #ffc48c; }
+    .RED { background: rgba(203,58,58,.18); color: #ffb4b4; }
+    .metric { font-size: 34px; font-weight: 800; margin: 8px 0; }
+    .small { font-size: 13px; color: var(--muted); line-height: 1.4; }
+    .label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    ul { margin: 10px 0 0 18px; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    td, th { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+    .btn { background: #2d6cdf; color: white; border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+    .tabs { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+    .tab-btn { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 8px 12px; cursor:pointer; font-weight:700; }
+    .tab-btn.active { background: rgba(45,108,223,.2); border-color: #2d6cdf; }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    .control-row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+    .control-row label { font-size:13px; color: var(--muted); }
+    select, textarea { background: var(--panel-2); color: var(--text); border:1px solid var(--border); border-radius:10px; padding:10px; }
+    textarea { width:100%; min-height:220px; resize:vertical; font-family: Consolas, monospace; }
+    .subtle-btn { background: transparent; color: var(--text); border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer; }
+    .source-tag { display:inline-block; padding:4px 8px; border:1px solid var(--border); border-radius:999px; font-size:11px; color: var(--muted); margin-right:6px; margin-top:6px; }
+    #riverMap { height: 560px; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
+    .map-legend { margin-top: 10px; }
+    .map-legend .source-tag { margin-bottom: 6px; }
+    .popup-title { font-weight: 700; margin-bottom: 6px; }
+    .tooltip-lite { font-size: 12px; }
+    .property-pin { filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+    .map-controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+    .map-controls label { font-size:13px; color: var(--muted); }
+    .map-controls input[type="checkbox"] { transform: scale(1.1); }
+    .legend-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+    .legend-line { display:inline-block; width:18px; height:0; border-top:3px solid currentColor; margin-right:6px; vertical-align:middle; }
+    .legend-dash { border-top-style:dashed; }
+    .map-pin-wrap { position: relative; width: 26px; height: 34px; }
+    .map-pin { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,.45); color:#081225; font-weight:700; display:flex; align-items:center; justify-content:center; font-size:12px; background: var(--pin-color, #2d6cdf); margin: 0 auto; }
+    .map-pin-tail { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 10px solid var(--pin-color, #2d6cdf); margin: -2px auto 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
+    .popup-divider { border: 0; border-top: 1px solid var(--border); margin: 8px 0; }
+    .popup-subtitle { font-weight: 700; margin: 6px 0 4px; font-size: 12px; color: var(--muted); text-transform: uppercase; }
+    .follow-pill { display:inline-block; padding:3px 8px; border-radius:999px; font-size:11px; border:1px solid var(--border); margin-top:6px; }
+    .score-good { color:#8cf0c2; }
+    .score-mid { color:#f8e18d; }
+    .score-low { color:#ffc48c; }
+    .mini-bar { height:8px; background: rgba(255,255,255,.08); border-radius:999px; overflow:hidden; margin-top:6px; }
+    .mini-bar-fill { height:100%; background:#2d6cdf; border-radius:999px; }
+    .settings-grid { display:grid; gap:16px; grid-template-columns: repeat(2, 1fr); margin-top:14px; }
+    .settings-group { border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .settings-group h3 { margin:0 0 10px; }
+    .field-grid { display:grid; gap:10px; grid-template-columns: repeat(2, 1fr); }
+    .field-grid input { background: var(--panel-2); color: var(--text); border:1px solid var(--border); border-radius:10px; padding:10px; width:100%; }
+    .field-grid label { display:block; font-size:12px; color: var(--muted); }
+    .muted { color: var(--muted); }
+    .spark { width: 100%; height: 120px; display:block; }
+    .gauge-spark { width: 100%; height: 64px; display:block; margin-top: 10px; }
+    .log-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .gauge-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .dir-wrap { display:flex; flex-direction:column; align-items:flex-end; gap:6px; min-width:86px; }
+    .dir-arrow { font-size: 34px; line-height: 1; font-weight: 800; }
+    .dir-badge { font-size: 11px; font-weight: 700; padding: 5px 8px; border-radius: 999px; letter-spacing: .03em; }
+    .prox { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .prox-line { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .badge-rise { background: rgba(31,157,101,.18); color: #8cf0c2; }
+    .badge-fall { background: rgba(203,58,58,.18); color: #ffb4b4; }
+    .badge-steady { background: rgba(202,162,39,.18); color: #f8e18d; }
+    @media (max-width: 980px) { .topbar, .grid, .gauges, .two-col, .three-col, .two-gauge-col, .settings-grid, .field-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="card">
+        <div class="label">Property</div>
+        <h1>San Gabriel River Watch</h1>
+        <p id="propertyName">Loading property...</p>
+        <button class="btn" onclick="refreshNow()">Refresh now</button>
+        <p class="small" id="nextRefresh">Auto refresh: every 10 minutes</p>
+        <p class="small" id="updatedAt"></p>
+      </div>
+      <div class="card">
+        <div class="label">Current property status</div>
+        <div id="propertyStatus" class="status">...</div>
+        <div id="propertyScore" class="metric">--</div>
+        <div class="small">Composite score based on fork overlap, local stage, flash flood alerts, and forecast rain.</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')">Overview</button>
+      <button class="tab-btn" data-tab="map" onclick="switchTab('map')">Map View</button>
+      <button class="tab-btn" data-tab="forecast" onclick="switchTab('forecast')">Forecast Inputs</button>
+      <button class="tab-btn" data-tab="basins" onclick="switchTab('basins')">Feeder Basin Rainfall</button>
+      <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">Settings & Export</button>
+    </div>
+    <p class="small" id="basinTabUpdated" style="margin-top:8px;"></p>
+
+    <div id="tab-overview" class="tab-panel active">
+    <div class="grid" style="margin-top:16px;">
+      <div class="card">
+        <div class="label">River risk</div>
+        <div id="riverStatus" class="status">...</div>
+        <div id="riverScore" class="metric">--</div>
+      </div>
+      <div class="card">
+        <div class="label">Flash runoff risk</div>
+        <div id="flashStatus" class="status">...</div>
+        <div id="flashScore" class="metric">--</div>
+      </div>
+      <div class="card">
+        <div class="label">Upstream convergence</div>
+        <div id="convergenceStatus" class="status">...</div>
+        <div id="convergenceScore" class="metric">--</div>
+      </div>
+      <div class="card">
+        <div class="label">North Fork / Lake Georgetown</div>
+        <div id="damStatus" class="status">...</div>
+        <div id="damScore" class="metric">--</div>
+      </div>
+      <div class="card">
+        <div class="label">North/South San Gabriel Load + July 2025 Comparison</div>
+        <div id="historicalMetric" class="metric">--</div>
+        <div class="small" id="historicalText">Loading fork-load comparison...</div>
+      </div>
+    </div>
+
+    <div class="two-col" style="margin-top:16px;">
+      <div class="card">
+        <h2>Why the system thinks this</h2>
+        <ul id="reasons"></ul>
+      </div>
+      <div class="card">
+        <h2>Warning logic</h2>
+        <ul>
+          <li>Primary local gauge: South Fork at Georgetown</li>
+          <li>Upstream convergence watches North Fork inflow plus both upstream South Fork gauges</li>
+          <li>North Fork near Georgetown is downstream of the dam, so Lake Georgetown level and release matter</li>
+          <li>Two upstream South Fork gauges help spot a stacked surge or wall of water moving downstream</li>
+          <li>Weir is treated as a confirmation gauge, not the source of truth</li>
+          <li>Berry Creek can distort downstream interpretation</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="label">lake-georgetown-system</div>
+      <h2>Lake Georgetown system cluster</h2>
+      <div class="two-col">
+        <div class="card">
+          <h2>North Fork inflow to Lake Georgetown</h2>
+          <div id="northForkLakeGauge"></div>
+        </div>
+        <div class="card">
+          <h2>Lake Georgetown / dam watch</h2>
+          <div class="small" id="lakeSummary">Loading lake summary...</div>
+          <table style="margin-top:10px;">
+            <tbody id="lakeRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+        <div class="label">upstream-south-fork-signals</div>
+        <h2>South Fork upstream growth cluster</h2>
+        <div class="two-gauge-col" id="southForkUpstreamCluster"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="label">primary-local-threat</div>
+        <h2>Primary local threat cluster</h2>
+        <div class="three-col" id="localCluster"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="label">downstream-loading-relationship</div>
+        <h2>Combined load + downstream loading relationship</h2>
+        <div class="three-col" id="downstreamLoadCluster"></div>
+      </div>
+
+<div class="two-col" style="margin-top:16px;">
+      <div class="card">
+        <h2>Active alerts</h2>
+        <div id="alerts"></div>
+      </div>
+      <div class="card">
+        <h2>Model notes</h2>
+        <ul>
+          <li>North Fork Reagan inflow gets less weight until lake rise, releases, or spillway proximity suggest dam concern.</li>
+          <li>South Fork at Hwy 183 is treated as a datum-based trend signal. Use its rise and sparkline more than the raw elevation number.</li>
+          <li>Property status now leans more on real river behavior, while still allowing early warning from heavy rain and feeder-basin convergence.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="two-col" style="margin-top:16px;">
+      <div class="card">
+        <h2>Next 12 hours</h2>
+        <table>
+          <thead><tr><th>Time (CDT)</th><th>POP</th><th>Forecast</th></tr></thead>
+          <tbody id="forecastRows"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>Recent alerts sent</h2>
+        <div id="alertEvents" class="small"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+        <h2>Recent property score history</h2>
+        <svg id="propertyHistoryChart" class="spark" viewBox="0 0 600 120" preserveAspectRatio="none"></svg>
+        <div class="small">Stored locally on the server so the monitor can compare recent trends and status changes.</div>
+      </div>
+  </div>
+
+
+    </div>
+
+
+    <div id="tab-map" class="tab-panel">
+      <div class="card" style="margin-top:16px;">
+        <div class="label">map-view</div>
+        <h2>Map View</h2>
+        <div class="map-controls">
+          <label><input type="checkbox" id="toggleFloodplainLayer" onchange="toggleFloodplainLayer()" checked> Floodplain overlay</label>
+          <label><input type="checkbox" id="toggleNearbyUsgs" onchange="toggleNearbyUsgsLayer()" checked> Nearby USGS Stations</label>
+          <label><input type="checkbox" id="toggleFollowWaterMode" onchange="toggleFollowWaterMode()"> Follow the water</label>
+          <span class="small" id="nearbyUsgsStatus">Loading nearby USGS stations…</span>
+        </div>
+        <div id="riverMap"></div>
+        <div class="map-legend">
+          <span class="source-tag">Property</span>
+          <span class="source-tag">Lake / dam system</span>
+          <span class="source-tag">North Fork / South Fork gauges</span>
+          <span class="source-tag">Confluence</span>
+          <span class="source-tag">Downstream loading points</span>
+          <span class="source-tag">Floodplain overlay</span>
+          <span class="source-tag">Nearby USGS stations overlay</span>
+          <span class="source-tag">Follow-the-water highlight</span>
+        </div>
+        <div class="small" id="mapStatusText" style="margin-top:8px;">Loading map...</div>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="card">
+          <h2>Map Notes</h2>
+          <ul>
+            <li>The property marker is the target reach near 2055 FM 971.</li>
+            <li>The lake system chain shows inflow, Lake Georgetown, and the post-dam North Fork contributor.</li>
+            <li>The South Fork chain shows upstream early-warning points and the Georgetown local threat point.</li>
+            <li>The new D marker shows the Berry Creek + San Gabriel convergence, and the E marker shows the downstream Weir crossing after that added influence.</li>
+            <li>The confluence marker now sits in the east-side merge area where the North and South forks visibly converge before the downstream loading story continues.</li>
+            <li>The FEMA floodplain overlay gives context for where overbank risk matters most along the corridor.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Map Sources</h2>
+          <table>
+            <tbody id="mapSourceRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
+    <div id="tab-forecast" class="tab-panel">
+      <div class="card" style="margin-top:16px;">
+        <div class="label">forecast-model-readiness</div>
+        <h2>Forecast Model Readiness</h2>
+        <div id="forecastReadinessStatus" class="status">...</div>
+        <div id="forecastReadinessMetric" class="metric">--</div>
+        <div class="small" id="forecastReadinessText">Loading forecast readiness...</div>
+        <div class="mini-bar"><div id="forecastReadinessBar" class="mini-bar-fill" style="width:0%"></div></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="label">mrms-observed-rainfall</div>
+        <h2>MRMS Observed Rainfall</h2>
+        <div id="mrmsStatus" class="status">...</div>
+        <div id="mrmsMetric" class="metric">--</div>
+        <div class="small" id="mrmsText">Loading MRMS observed rainfall...</div>
+        <table style="margin-top:10px;">
+          <tbody id="mrmsRows"></tbody>
+        </table>
+      </div>
+
+      <div class="three-col" style="margin-top:16px;">
+        <div class="card">
+          <div class="label">live-forcing</div>
+          <h3>Live Forcing</h3>
+          <div id="liveForcingStatus" class="status">...</div>
+          <div id="liveForcingMetric" class="metric">--</div>
+          <div class="small" id="liveForcingText">Loading live forcing...</div>
+        </div>
+        <div class="card">
+          <div class="label">hydrologic-guidance</div>
+          <h3>Hydrologic Guidance</h3>
+          <div id="hydroGuidanceStatus" class="status">...</div>
+          <div id="hydroGuidanceMetric" class="metric">--</div>
+          <div class="small" id="hydroGuidanceText">Loading hydrologic guidance...</div>
+        </div>
+        <div class="card">
+          <div class="label">pattern-risk</div>
+          <h3>Pattern Risk</h3>
+          <div id="patternRiskStatus" class="status">...</div>
+          <div id="patternRiskMetric" class="metric">--</div>
+          <div class="small" id="patternRiskText">Loading pattern risk...</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="label">forecast-input-scorecard</div>
+        <h2>Forecast Inputs Scorecard</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>Best horizon</th>
+              <th>Contribution</th>
+              <th>Analyst value</th>
+              <th>Effort</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="forecastScorecardRows"></tbody>
+        </table>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="card">
+          <h2>Source Contributions</h2>
+          <table>
+            <tbody id="forecastContributionRows"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h2>Recommended Build Order</h2>
+          <table>
+            <tbody id="forecastBuildOrderRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-basins" class="tab-panel">
+      <div class="card" style="margin-top:16px;">
+        <div class="label">feeder-basin-rainfall</div>
+        <h2>Feeder Basin Rainfall</h2>
+        <div class="three-col">
+          <div class="card">
+            <div class="label">north-fork-basin</div>
+            <h3>North Fork Basin</h3>
+            <div id="northForkRainStatus" class="status">...</div>
+            <div id="northForkRainMetric" class="metric">--</div>
+            <div class="small" id="northForkRainText">Loading basin rainfall...</div>
+          </div>
+          <div class="card">
+            <div class="label">south-fork-basin</div>
+            <h3>South Fork Basin</h3>
+            <div id="southForkRainStatus" class="status">...</div>
+            <div id="southForkRainMetric" class="metric">--</div>
+            <div class="small" id="southForkRainText">Loading basin rainfall...</div>
+          </div>
+          <div class="card">
+            <div class="label">local-area-rain</div>
+            <h3>Local Area</h3>
+            <div id="localRainStatus" class="status">...</div>
+            <div id="localRainMetric" class="metric">--</div>
+            <div class="small" id="localRainText">Loading local rainfall...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="label">confidence</div>
+        <h2>Confidence</h2>
+        <div id="confidenceStatus" class="status">...</div>
+        <div id="confidenceMetric" class="metric">--</div>
+        <div class="small" id="confidenceText">Loading confidence...</div>
+        <table style="margin-top:10px;">
+          <tbody id="confidenceRows"></tbody>
+        </table>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="card">
+          <h2>Rainfall Outlook</h2>
+          <table>
+            <thead><tr><th>Area</th><th>Observed/Posture</th><th>Main effect likely next</th></tr></thead>
+            <tbody id="rainfallOutlookRows"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h2>Long-Range Awareness</h2>
+          <table>
+            <tbody id="longRangeRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="label">historical-analogs</div>
+        <h2>Historical Analogs</h2>
+        <table>
+          <tbody id="historicalAnalogRows"></tbody>
+        </table>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="label">lead-time</div>
+        <h2>Lead Time</h2>
+        <div id="leadTimeStatus" class="status">...</div>
+        <div id="leadTimeMetric" class="metric">--</div>
+        <div class="small" id="leadTimeText">Loading lead-time posture...</div>
+        <table style="margin-top:10px;">
+          <tbody id="leadTimeRows"></tbody>
+        </table>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="label">tropical-gulf-rain-threat</div>
+        <h2>Tropical / Gulf Rain Threat</h2>
+        <div id="tropicalThreatStatus" class="status">...</div>
+        <div id="tropicalThreatMetric" class="metric">--</div>
+        <div class="small" id="tropicalThreatText">Loading tropical awareness...</div>
+        <table style="margin-top:10px;">
+          <tbody id="tropicalThreatRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+
+    <div id="tab-settings" class="tab-panel">
+      <div class="two-col" style="margin-top:16px;">
+        <div class="card">
+          <div class="label">settings</div>
+          <h2>Settings</h2>
+          <div class="control-row">
+            <label for="refreshIntervalSelect">Auto refresh interval</label>
+            <select id="refreshIntervalSelect" onchange="applyLocalSettings()">
+              <option value="300000">5 minutes</option>
+              <option value="600000" selected>10 minutes</option>
+              <option value="900000">15 minutes</option>
+              <option value="1800000">30 minutes</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <label for="summaryModeSelect">Incident summary style</label>
+            <select id="summaryModeSelect" onchange="applyLocalSettings()">
+              <option value="brief" selected>Brief</option>
+              <option value="ops">Operations</option>
+              <option value="public">Public-facing</option>
+            </select>
+          </div>
+          <div class="settings-grid">
+            <div class="settings-group">
+              <h3>South Fork stages</h3>
+              <div class="field-grid">
+                <label>Action<input id="sfAction" type="number" step="0.01"></label>
+                <label>Minor<input id="sfMinor" type="number" step="0.01"></label>
+                <label>Moderate<input id="sfModerate" type="number" step="0.01"></label>
+                <label>Major<input id="sfMajor" type="number" step="0.01"></label>
+              </div>
+            </div>
+            <div class="settings-group">
+              <h3>Combined load index</h3>
+              <div class="field-grid">
+                <label>Action<input id="clAction" type="number" step="0.01"></label>
+                <label>Minor<input id="clMinor" type="number" step="0.01"></label>
+                <label>Moderate<input id="clModerate" type="number" step="0.01"></label>
+                <label>Major<input id="clMajor" type="number" step="0.01"></label>
+              </div>
+            </div>
+            <div class="settings-group">
+              <h3>Berry / Weir index</h3>
+              <div class="field-grid">
+                <label>Action<input id="bwAction" type="number" step="0.01"></label>
+                <label>Minor<input id="bwMinor" type="number" step="0.01"></label>
+                <label>Moderate<input id="bwModerate" type="number" step="0.01"></label>
+                <label>Major<input id="bwMajor" type="number" step="0.01"></label>
+              </div>
+            </div>
+            <div class="settings-group">
+              <h3>Tropical threat cutoffs</h3>
+              <div class="field-grid">
+                <label>Yellow<input id="ttYellow" type="number" step="1"></label>
+                <label>Orange<input id="ttOrange" type="number" step="1"></label>
+                <label>Red<input id="ttRed" type="number" step="1"></label>
+              </div>
+            </div>
+          </div>
+          <div class="control-row">
+            <button class="btn" onclick="saveThresholdSettings()">Save thresholds</button>
+            <button class="subtle-btn" onclick="reloadThresholdSettings()">Reload thresholds</button>
+          </div>
+          <div class="small" id="settingsSavedText" style="margin-top:12px;">Refresh and summary settings save locally. Threshold settings save to the app.</div>
+        </div>
+
+        <div class="card">
+          <div class="label">source-transparency</div>
+          <h2>Source Transparency</h2>
+          <div class="small" id="sourceUpdatedText">Loading sources...</div>
+          <table style="margin-top:10px;">
+            <tbody id="sourceRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="label">incident-summary-export</div>
+        <h2>Incident Summary / Export</h2>
+        <div class="control-row">
+          <button class="btn" onclick="generateIncidentSummary()">Generate summary</button>
+          <button class="subtle-btn" onclick="copyIncidentSummary()">Copy summary</button>
+          <button class="subtle-btn" onclick="window.print()">Print / Save PDF</button>
+        </div>
+        <textarea id="incidentSummaryText" placeholder="Generate an incident summary to copy, print, or send."></textarea>
+      </div>
+    </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    let autoRefreshMs = 10 * 60 * 1000;
+    let latestSnapshot = null;
+    let currentThresholdSettings = null;
+    const SETTINGS_KEY = 'sgrw_settings_v1';
+
+    let refreshTimer = null;
+    let countdownTimer = null;
+    let nextRefreshAt = null;
+
+    function defaultThresholdSettings() {
+      return {
+        southForkStages: { action: 5, minor: 9, moderate: 13, major: 26 },
+        combinedIndex: { action: 10, minor: 18, moderate: 26, major: 52 },
+        berryWeirIndex: { action: 18.21, minor: 26.21, moderate: 34.21, major: 60.21 },
+        tropicalThreat: { yellow: 20, orange: 45, red: 70 }
+      };
+    }
+
+    function renderThresholdSettings(settings) {
+      currentThresholdSettings = settings || defaultThresholdSettings();
+      const s = currentThresholdSettings;
+      const map = {
+        sfAction: s.southForkStages.action, sfMinor: s.southForkStages.minor, sfModerate: s.southForkStages.moderate, sfMajor: s.southForkStages.major,
+        clAction: s.combinedIndex.action, clMinor: s.combinedIndex.minor, clModerate: s.combinedIndex.moderate, clMajor: s.combinedIndex.major,
+        bwAction: s.berryWeirIndex.action, bwMinor: s.berryWeirIndex.minor, bwModerate: s.berryWeirIndex.moderate, bwMajor: s.berryWeirIndex.major,
+        ttYellow: s.tropicalThreat.yellow, ttOrange: s.tropicalThreat.orange, ttRed: s.tropicalThreat.red
+      };
+      Object.entries(map).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+      });
+    }
+
+    function collectThresholdSettings() {
+      return {
+        southForkStages: {
+          action: Number(document.getElementById('sfAction')?.value || 5),
+          minor: Number(document.getElementById('sfMinor')?.value || 9),
+          moderate: Number(document.getElementById('sfModerate')?.value || 13),
+          major: Number(document.getElementById('sfMajor')?.value || 26)
+        },
+        combinedIndex: {
+          action: Number(document.getElementById('clAction')?.value || 10),
+          minor: Number(document.getElementById('clMinor')?.value || 18),
+          moderate: Number(document.getElementById('clModerate')?.value || 26),
+          major: Number(document.getElementById('clMajor')?.value || 52)
+        },
+        berryWeirIndex: {
+          action: Number(document.getElementById('bwAction')?.value || 18.21),
+          minor: Number(document.getElementById('bwMinor')?.value || 26.21),
+          moderate: Number(document.getElementById('bwModerate')?.value || 34.21),
+          major: Number(document.getElementById('bwMajor')?.value || 60.21)
+        },
+        tropicalThreat: {
+          yellow: Number(document.getElementById('ttYellow')?.value || 20),
+          orange: Number(document.getElementById('ttOrange')?.value || 45),
+          red: Number(document.getElementById('ttRed')?.value || 70)
+        }
+      };
+    }
+
+    async function reloadThresholdSettings() {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      renderThresholdSettings(data.thresholds || defaultThresholdSettings());
+      const msg = document.getElementById('settingsSavedText');
+      if (msg) msg.textContent = 'Threshold settings reloaded from the app.';
+    }
+
+    async function saveThresholdSettings() {
+      const thresholds = collectThresholdSettings();
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thresholds })
+      });
+      const data = await res.json();
+      renderThresholdSettings(data.thresholds || thresholds);
+      const msg = document.getElementById('settingsSavedText');
+      if (msg) msg.textContent = 'Threshold settings saved. Refreshing snapshot...';
+      await refreshNow(false);
+    }
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (!raw) return;
+        const settings = JSON.parse(raw);
+        if (settings.autoRefreshMs) autoRefreshMs = Number(settings.autoRefreshMs);
+        const refreshSel = document.getElementById('refreshIntervalSelect');
+        const modeSel = document.getElementById('summaryModeSelect');
+        if (refreshSel && settings.autoRefreshMs) refreshSel.value = String(settings.autoRefreshMs);
+        if (modeSel && settings.summaryMode) modeSel.value = settings.summaryMode;
+      } catch (_) {}
+    }
+
+    function applyLocalSettings() {
+      const refreshSel = document.getElementById('refreshIntervalSelect');
+      const modeSel = document.getElementById('summaryModeSelect');
+      const settings = {
+        autoRefreshMs: Number(refreshSel?.value || 600000),
+        summaryMode: modeSel?.value || 'brief'
+      };
+      autoRefreshMs = settings.autoRefreshMs;
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      const msg = document.getElementById('settingsSavedText');
+      if (msg) msg.textContent = `Saved. Auto refresh set to ${Math.round(autoRefreshMs / 60000)} minutes.`;
+      scheduleAutoRefresh();
+    }
+
+    function sourceCatalogRows(data) {
+      const generated = data?.generatedAt ? new Date(data.generatedAt).toLocaleString() : 'unknown';
+      return [
+        ['River gauges', 'USGS NWIS / Water Services', `Gauge stages, flow, trends. Snapshot ${generated}`],
+        ['Weather alerts & forecast', 'National Weather Service API', `Alerts, hourly forecast, rainfall posture. Snapshot ${generated}`],
+        ['Lake Georgetown elevation', 'USGS gauge first; USACE page fallback', 'Lake elevation and 24h change prefer USGS.'],
+        ['Lake release / dam context', 'USACE public pages', 'Release and spillway context where available.'],
+        ['Historical analogs', 'Internal benchmark library', 'Operational comparisons against saved reference events.'],
+        ['Lead time / tropical threat', 'Model-derived', 'Calculated from live snapshot signals and thresholds.']
+      ];
+    }
+
+    function renderSourceTransparency(data) {
+      const rows = sourceCatalogRows(data);
+      document.getElementById('sourceUpdatedText').textContent = `Source mapping for snapshot: ${new Date(data.generatedAt).toLocaleString()}`;
+      document.getElementById('sourceRows').innerHTML = rows.map(([a,b,c]) => `<tr><th>${a}</th><td><div>${b}</div><div class="small">${c}</div></td></tr>`).join('');
+    }
+
+    function buildIncidentSummary(data) {
+      const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+      const mode = settings.summaryMode || 'brief';
+      const sc = data?.scorecard || {};
+      const property = data?.property?.name || 'Property';
+      const generated = data?.generatedAt ? new Date(data.generatedAt).toLocaleString() : 'unknown';
+      const north = (data?.gauges || []).find(g => g?.gauge?.kind === 'northFork')?.latest?.['00065']?.value;
+      const south = (data?.gauges || []).find(g => g?.gauge?.kind === 'southForkGeorgetown')?.latest?.['00065']?.value;
+      const berry = (data?.gauges || []).find(g => g?.gauge?.kind === 'berryCreek')?.latest?.['00065']?.value;
+      const weir = (data?.gauges || []).find(g => g?.gauge?.kind === 'downstreamWeir')?.latest?.['00065']?.value;
+      const lead = document.getElementById('leadTimeMetric')?.textContent || '--';
+      const confidence = document.getElementById('confidenceMetric')?.textContent || '--';
+      const topReasons = (sc.reasons || []).slice(0, 5).map(r => `- ${r}`).join('\n');
+
+      if (mode === 'public') {
+        return `San Gabriel River Watch
+Updated: ${generated}
+Location: ${property}
+
+Current status: ${sc.statuses?.property || '--'} (${sc.scores?.property ?? '--'})
+River risk: ${sc.statuses?.river || '--'} (${sc.scores?.river ?? '--'})
+Flash runoff risk: ${sc.statuses?.flashRunoff || '--'} (${sc.scores?.flashRunoff ?? '--'})
+
+North Fork near Georgetown: ${north == null ? '--' : north.toFixed(2)} ft
+South Fork at Georgetown: ${south == null ? '--' : south.toFixed(2)} ft
+Berry Creek at Airport Rd: ${berry == null ? '--' : berry.toFixed(2)} ft
+San Gabriel near Weir: ${weir == null ? '--' : weir.toFixed(2)} ft
+
+Lead time posture: ${lead}
+Confidence: ${confidence}
+
+Key notes:
+${topReasons}`;
+      }
+
+      if (mode === 'ops') {
+        return `OPERATIONS SUMMARY
+Snapshot: ${generated}
+Property: ${property}
+
+PROPERTY STATUS: ${sc.statuses?.property || '--'} / ${sc.scores?.property ?? '--'}
+RIVER: ${sc.statuses?.river || '--'} / ${sc.scores?.river ?? '--'}
+FLASH RUNOFF: ${sc.statuses?.flashRunoff || '--'} / ${sc.scores?.flashRunoff ?? '--'}
+UPSTREAM CONVERGENCE: ${sc.statuses?.upstreamConvergence || '--'} / ${sc.scores?.upstreamConvergence ?? '--'}
+NORTH FORK / DAM: ${sc.statuses?.northForkDam || '--'} / ${sc.scores?.northForkDam ?? '--'}
+
+GAUGE LEVELS
+- North Fork near Georgetown: ${north == null ? '--' : north.toFixed(2)} ft
+- South Fork at Georgetown: ${south == null ? '--' : south.toFixed(2)} ft
+- Berry Creek at Airport Rd: ${berry == null ? '--' : berry.toFixed(2)} ft
+- San Gabriel near Weir: ${weir == null ? '--' : weir.toFixed(2)} ft
+
+LEAD TIME: ${lead}
+CONFIDENCE: ${confidence}
+
+PRIMARY DRIVERS
+${topReasons}`;
+      }
+
+      return `San Gabriel River Watch summary
+Updated: ${generated}
+Status: ${sc.statuses?.property || '--'} (${sc.scores?.property ?? '--'})
+River: ${sc.statuses?.river || '--'} | Flash runoff: ${sc.statuses?.flashRunoff || '--'}
+North Fork: ${north == null ? '--' : north.toFixed(2)} ft | South Fork: ${south == null ? '--' : south.toFixed(2)} ft
+Lead time: ${lead} | Confidence: ${confidence}
+
+Top reasons:
+${topReasons}`;
+    }
+
+    function generateIncidentSummary() {
+      if (!latestSnapshot) return;
+      const text = buildIncidentSummary(latestSnapshot);
+      const box = document.getElementById('incidentSummaryText');
+      if (box) box.value = text;
+    }
+
+    async function copyIncidentSummary() {
+      const box = document.getElementById('incidentSummaryText');
+      if (!box?.value) generateIncidentSummary();
+      try {
+        await navigator.clipboard.writeText(box.value);
+      } catch (_) {
+        box.select();
+        document.execCommand('copy');
+      }
+    }
+
+
+    const MAP_POINTS = [
+      { key: 'property', label: 'Property', lat: 30.6624152, lon: -97.6303583, type: 'property' },
+      { key: 'confluence', label: 'North/South Fork Confluence', lat: 30.646995, lon: -97.671304, type: 'confluence' },
+      { key: 'northForkUpstream', label: 'N Fk at Reagan Blvd', lat: 30.69775, lon: -97.84922, type: 'lake' },
+      { key: 'lakeGeorgetown', label: 'Lake Georgetown', lat: 30.6675, lon: -97.7272, type: 'lake' },
+      { key: 'northFork', label: 'North Fork near Georgetown', lat: 30.66167, lon: -97.71111, type: 'north' },
+      { key: 'southForkUpper', label: 'S Fk at SH 1869', lat: 30.708, lon: -97.918, type: 'south' },
+      { key: 'southForkUpstream', label: 'South Fork at Hwy 183', lat: 30.610, lon: -97.86056, type: 'south' },
+      { key: 'southForkGeorgetown', label: 'South Fork at Georgetown', lat: 30.62556, lon: -97.69083, type: 'south' },
+      { key: 'berryCreek', label: 'Berry Creek at Airport Rd', lat: 30.700, lon: -97.66640, type: 'downstream' },
+      { key: 'berrySanGabrielConvergence', label: 'Berry Creek + San Gabriel Convergence', lat: 30.671809, lon: -97.610190, type: 'downstream' },
+      { key: 'downstreamWeir', label: 'San Gabriel near Weir / downstream crossing', lat: 30.646053, lon: -97.585403, type: 'downstream' }
+    ];
+
+    let riverMap = null;
+    let riverMapMarkers = {};
+    let nearbyUsgsLayer = null;
+    let nearbyUsgsLoaded = false;
+    let floodplainLayer = null;
+    let basePathLayers = {};
+    let followWaterLayer = null;
+
+    function typeColor(type) {
+      if (type === 'property') return '#2d6cdf';
+      if (type === 'confluence') return '#d97a23';
+      if (type === 'lake') return '#8cf0c2';
+      if (type === 'north') return '#f8e18d';
+      if (type === 'south') return '#ffc48c';
+      return '#ffb4b4';
+    }
+
+    function pointGlyph(point) {
+      if (point.key === 'property') return '⌂';
+      if (point.key === 'confluence') return 'C';
+      if (point.key === 'berrySanGabrielConvergence') return 'D';
+      if (point.key === 'downstreamWeir') return 'E';
+      if (point.key === 'berryCreek') return 'B';
+      if (point.type === 'lake') return 'L';
+      if (point.type === 'north') return 'N';
+      if (point.type === 'south') return 'S';
+      return 'D';
+    }
+
+    function buildPointIcon(point) {
+      const color = typeColor(point.type);
+      const glyph = pointGlyph(point);
+      const html = `
+        <div class="map-pin-wrap" style="--pin-color:${color}">
+          <div class="map-pin">${glyph}</div>
+          <div class="map-pin-tail"></div>
+        </div>
+      `;
+      return L.divIcon({
+        className: '',
+        html,
+        iconSize: [26, 34],
+        iconAnchor: [13, 34],
+        popupAnchor: [0, -28],
+        tooltipAnchor: [0, -26]
+      });
+    }
+
+    function haversineMiles(lat1, lon1, lat2, lon2) {
+      const R = 3958.8;
+      const toRad = (d) => d * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(a));
+    }
+
+    function getGaugeByKind(data, kind) {
+      return (data?.gauges || []).find(g => g?.gauge?.kind === kind) || null;
+    }
+
+    function getTrackedGaugeDetails(pointKey, data) {
+      if (pointKey === 'lakeGeorgetown') {
+        const lake = data?.lake?.lakeMeta || {};
+        return {
+          label: 'Lake Georgetown',
+          stage: lake.currentPoolElevationFt,
+          flow: lake.releaseCfs,
+          trend: lake.change24hFt == null ? 'unknown' : (lake.change24hFt > 0.05 ? 'rising' : lake.change24hFt < -0.05 ? 'falling' : 'steady')
+        };
+      }
+      if (pointKey === 'confluence') {
+        const north = getGaugeByKind(data, 'northFork');
+        const south = getGaugeByKind(data, 'southForkGeorgetown');
+        const n = Number(north?.latest?.['00065']?.value || 0);
+        const s = Number(south?.latest?.['00065']?.value || 0);
+        const combined = Number((n + s).toFixed(2));
+        const nRate = Number(north?.trends?.['00065']?.deltaPerHour || 0);
+        const sRate = Number(south?.trends?.['00065']?.deltaPerHour || 0);
+        const delta = nRate + sRate;
+        const trend = delta > 0.05 ? 'rising' : (delta < -0.05 ? 'falling' : 'steady');
+        return { label: 'Confluence', stage: combined, flow: null, trend };
+      }
+      const gauge = getGaugeByKind(data, pointKey);
+      return {
+        label: gauge?.gauge?.shortName || pointKey,
+        stage: gauge?.latest?.['00065']?.value ?? null,
+        flow: gauge?.latest?.['00060']?.value ?? null,
+        trend: gauge?.trends?.['00065']?.direction || 'unknown'
+      };
+    }
+
+    function closestTrackedGauge(lat, lon, data) {
+      let best = null;
+      for (const point of MAP_POINTS.filter(p => p.key !== 'property')) {
+        const d = haversineMiles(lat, lon, point.lat, point.lon);
+        if (!best || d < best.distance) {
+          best = {
+            point,
+            distance: d,
+            details: getTrackedGaugeDetails(point.key, data)
+          };
+        }
+      }
+      return best;
+    }
+
+    function fmtMaybeNumber(value, digits = 2) {
+      return value == null || Number.isNaN(Number(value)) ? '--' : Number(value).toFixed(digits);
+    }
+
+    function thresholdSetForPoint(pointKey) {
+      const s = currentThresholdSettings || defaultThresholdSettings();
+      if (['northFork', 'southForkUpper', 'southForkUpstream', 'southForkGeorgetown'].includes(pointKey)) {
+        return { title: 'Stage thresholds', values: s.southForkStages, unit: 'ft' };
+      }
+      if (pointKey === 'confluence') {
+        return { title: 'Combined load thresholds', values: s.combinedIndex, unit: 'index' };
+      }
+      if (['berryCreek', 'downstreamWeir'].includes(pointKey)) {
+        return { title: 'Downstream load thresholds', values: s.berryWeirIndex, unit: 'index' };
+      }
+      return null;
+    }
+
+    function thresholdLinesHtml(value, pointKey) {
+      const thresholdInfo = thresholdSetForPoint(pointKey);
+      if (!thresholdInfo || value == null || Number.isNaN(Number(value))) return '';
+      const thresholds = thresholdInfo.values;
+      const rows = [['Action', thresholds.action], ['Minor', thresholds.minor], ['Moderate', thresholds.moderate], ['Major', thresholds.major]]
+        .filter(([, target]) => target != null)
+        .map(([label, target]) => {
+          const diff = Number(target) - Number(value);
+          const distance = Math.abs(diff).toFixed(2);
+          const relation = diff >= 0 ? 'below' : 'above';
+          return `<div class="small">${distance} ${thresholdInfo.unit} ${relation} ${label.toLowerCase()}</div>`;
+        })
+        .join('');
+      return `<hr class="popup-divider"><div class="popup-subtitle">${thresholdInfo.title}</div>${rows}`;
+    }
+
+    function propertyPopupHtml(data) {
+      return `<div class="popup-title">2055 FM 971 property</div>
+        <div>${data?.property?.name || 'Property target reach'}</div>
+        <div class="small">Pinned target property for local flood-watch decisions.</div>
+        <div class="follow-pill">${data?.scorecard?.statuses?.property || 'UNKNOWN'} | ${data?.scorecard?.scores?.property ?? '--'}</div>`;
+    }
+
+    function confluencePopupHtml(data) {
+      const north = getGaugeByKind(data, 'northFork');
+      const south = getGaugeByKind(data, 'southForkGeorgetown');
+      const northStage = north?.latest?.['00065']?.value;
+      const southStage = south?.latest?.['00065']?.value;
+      const combined = (northStage == null && southStage == null) ? null : Number(((Number(northStage || 0)) + (Number(southStage || 0))).toFixed(2));
+      return `<div class="popup-title">North/South Fork Confluence</div>
+        <div>North Fork: ${fmtMaybeNumber(northStage)} ft</div>
+        <div>South Fork: ${fmtMaybeNumber(southStage)} ft</div>
+        <div>Combined load index: ${combined == null ? '--' : combined.toFixed(2)}</div>
+        <div class="small">Operational merge point for the local river-loading story.</div>
+        ${thresholdLinesHtml(combined, 'confluence')}`;
+    }
+
+    function markerPopupHtml(point, data) {
+      if (point.key === 'property') return propertyPopupHtml(data);
+      if (point.key === 'confluence') return confluencePopupHtml(data);
+      if (point.key === 'berrySanGabrielConvergence') {
+        const berry = getGaugeByKind(data, 'berryCreek');
+        const weir = getGaugeByKind(data, 'downstreamWeir');
+        const berryStage = berry?.latest?.['00065']?.value;
+        const weirStage = weir?.latest?.['00065']?.value;
+        return `<div class="popup-title">Berry Creek + San Gabriel Convergence</div>
+          <div>Berry Creek reference: ${fmtMaybeNumber(berryStage)} ft</div>
+          <div>Downstream Weir reference: ${fmtMaybeNumber(weirStage)} ft</div>
+          <div class="small">Operational convergence point where Berry Creek influence joins the San Gabriel before the downstream E point.</div>`;
+      }
+      if (point.key === 'lakeGeorgetown') {
+        const lake = data?.lake?.lakeMeta || {};
+        return `<div class="popup-title">${point.label}</div>
+          <div>Elevation: ${fmtMaybeNumber(lake.currentPoolElevationFt)} ft</div>
+          <div>24h change: ${fmtMaybeNumber(lake.change24hFt)} ft</div>
+          <div>Release: ${lake.releaseCfs == null ? '--' : Number(lake.releaseCfs).toFixed(0)} cfs</div>`;
+      }
+
+      const gauge = getGaugeByKind(data, point.key);
+      const stage = gauge?.latest?.['00065']?.value;
+      const flow = gauge?.latest?.['00060']?.value;
+      const trend = gauge?.trends?.['00065']?.direction || 'unknown';
+      const downstreamNote = point.key === 'downstreamWeir'
+        ? '<div class="small">This downstream crossing is affected by the Berry Creek + San Gabriel convergence upstream near FM 971 before conditions reach this point.</div>'
+        : '';
+      return `<div class="popup-title">${point.label}</div>
+        <div>Stage: ${fmtMaybeNumber(stage)} ft</div>
+        <div>Flow: ${flow == null ? '--' : Number(flow).toFixed(0)} cfs</div>
+        <div>Trend: ${trend}</div>
+        ${downstreamNote}
+        ${thresholdLinesHtml(stage, point.key)}`;
+    }
+
+    function createFloodplainLayer() {
+      return L.tileLayer.wms('https://hazards.fema.gov/arcgis/rest/services/public/NFHLWMS/MapServer/WMSServer', {
+        layers: '1,4,5',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.45,
+        attribution: 'FEMA NFHL'
+      });
+    }
+
+    function toggleFloodplainLayer() {
+      const checked = document.getElementById('toggleFloodplainLayer')?.checked;
+      if (!riverMap) return;
+      if (!floodplainLayer) floodplainLayer = createFloodplainLayer();
+      if (checked) {
+        if (!riverMap.hasLayer(floodplainLayer)) floodplainLayer.addTo(riverMap);
+      } else {
+        if (riverMap.hasLayer(floodplainLayer)) riverMap.removeLayer(floodplainLayer);
+      }
+    }
+
+    function isRiverRelevantStation(label, stationId, lat, lon, data) {
+      const riverWords = /(river|creek|fork|branch|lake|springs?|run)/i;
+      if (!riverWords.test(`${label} ${stationId}`)) return false;
+      const nearest = closestTrackedGauge(lat, lon, data);
+      return nearest && nearest.distance <= 1.25;
+    }
+
+    async function loadNearbyUsgsStations(dataForTooltips = latestSnapshot) {
+      if (nearbyUsgsLoaded || typeof L === 'undefined' || !riverMap) return;
+      nearbyUsgsLoaded = true;
+      nearbyUsgsLayer = L.layerGroup().addTo(riverMap);
+
+      const bbox = [-97.98, 30.53, -97.46, 30.77];
+      const url = `https://api.waterdata.usgs.gov/ogcapi/v0/collections/monitoring-locations/items?f=json&bbox=${bbox.join(',')}&limit=200`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const features = data?.features || [];
+        let count = 0;
+
+        features.forEach((feature) => {
+          const coords = feature?.geometry?.coordinates;
+          if (!Array.isArray(coords) || coords.length < 2) return;
+          const lon = Number(coords[0]);
+          const lat = Number(coords[1]);
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+          const props = feature?.properties || {};
+          const label = props.monitoring_location_name || props.monitoring_location_id || 'USGS station';
+          const stationId = props.monitoring_location_id || props.provider_id || 'unknown';
+
+          if (!isRiverRelevantStation(label, stationId, lat, lon, dataForTooltips)) return;
+
+          const nearest = closestTrackedGauge(lat, lon, dataForTooltips);
+          const nearestStage = nearest?.details?.stage;
+          const nearestFlow = nearest?.details?.flow;
+          const nearestTrend = nearest?.details?.trend || 'unknown';
+          const nearestLabel = nearest?.details?.label || 'No nearby tracked gauge';
+          const nearestMiles = nearest?.distance == null ? '--' : nearest.distance.toFixed(1);
+
+          const marker = L.circleMarker([lat, lon], {
+            radius: 5,
+            color: '#ff5b5b',
+            fillColor: '#ff5b5b',
+            fillOpacity: 0.85,
+            weight: 1.5
+          });
+
+          marker.bindPopup(
+            `<div class="popup-title">${label}</div>` +
+            `<div>${stationId}</div>` +
+            `<div class="small">Nearby USGS monitoring location overlay</div>` +
+            `<hr class="popup-divider">` +
+            `<div class="small">Closest tracked gauge: ${nearestLabel} (${nearestMiles} mi)</div>` +
+            `<div class="small">Stage: ${nearestStage == null ? '--' : Number(nearestStage).toFixed(2)} ft</div>` +
+            `<div class="small">Flow: ${nearestFlow == null ? '--' : Number(nearestFlow).toFixed(0)} cfs</div>` +
+            `<div class="small">Trend: ${nearestTrend}</div>`
+          );
+
+          marker.bindTooltip(
+            `<div class="tooltip-lite"><strong>${label}</strong><br>` +
+            `Closest tracked gauge: ${nearestLabel}<br>` +
+            `Stage: ${nearestStage == null ? '--' : Number(nearestStage).toFixed(2)} ft</div>`,
+            { sticky: true, direction: 'top', opacity: 0.95 }
+          );
+
+          marker.addTo(nearbyUsgsLayer);
+          count += 1;
+        });
+
+        const statusEl = document.getElementById('nearbyUsgsStatus');
+        if (statusEl) statusEl.textContent = `Nearby USGS stations loaded: ${count} river-relevant stations`;
+      } catch (err) {
+        const statusEl = document.getElementById('nearbyUsgsStatus');
+        if (statusEl) statusEl.textContent = `Nearby USGS stations unavailable: ${err.message}`;
+      }
+    }
+
+    function toggleNearbyUsgsLayer() {
+      const checked = document.getElementById('toggleNearbyUsgs')?.checked;
+      if (!riverMap) return;
+      if (!nearbyUsgsLayer && checked) {
+        loadNearbyUsgsStations();
+        return;
+      }
+      if (!nearbyUsgsLayer) return;
+      if (checked) {
+        if (!riverMap.hasLayer(nearbyUsgsLayer)) nearbyUsgsLayer.addTo(riverMap);
+      } else {
+        if (riverMap.hasLayer(nearbyUsgsLayer)) riverMap.removeLayer(nearbyUsgsLayer);
+      }
+    }
+
+    function pathCoords(keys) {
+      return MAP_POINTS.filter(p => keys.includes(p.key)).map(p => [p.lat, p.lon]);
+    }
+
+    function pathScore(pointKey, data, thresholdAction) {
+      const d = getTrackedGaugeDetails(pointKey, data);
+      const stage = Number(d.stage || 0);
+      let score = 0;
+      if (thresholdAction) score += (stage / thresholdAction) * 60;
+      if (d.trend === 'rising') score += 25;
+      else if (d.trend === 'steady') score += 10;
+      return score;
+    }
+
+    function updateFollowWaterMode(data) {
+      const checked = document.getElementById('toggleFollowWaterMode')?.checked;
+      if (!riverMap) return;
+      if (!followWaterLayer) followWaterLayer = L.layerGroup();
+      followWaterLayer.clearLayers();
+
+      if (!checked) {
+        if (riverMap.hasLayer(followWaterLayer)) riverMap.removeLayer(followWaterLayer);
+        return;
+      }
+
+      if (!riverMap.hasLayer(followWaterLayer)) followWaterLayer.addTo(riverMap);
+
+      const thresholds = currentThresholdSettings || defaultThresholdSettings();
+      const northScore = pathScore('northFork', data, thresholds.southForkStages.action);
+      const southScore = pathScore('southForkGeorgetown', data, thresholds.southForkStages.action);
+      const confluenceScore = pathScore('confluence', data, thresholds.combinedIndex.action);
+      const downScore = Math.max(pathScore('berryCreek', data, thresholds.berryWeirIndex.action), pathScore('downstreamWeir', data, thresholds.berryWeirIndex.action), confluenceScore);
+
+      const northWeight = northScore >= 80 ? 8 : northScore >= 45 ? 6 : 4;
+      const southWeight = southScore >= 80 ? 8 : southScore >= 45 ? 6 : 4;
+      const downWeight = downScore >= 90 ? 8 : downScore >= 50 ? 6 : 4;
+      const northOpacity = northScore >= 25 ? 0.95 : 0.45;
+      const southOpacity = southScore >= 25 ? 0.95 : 0.45;
+      const downOpacity = downScore >= 25 ? 0.95 : 0.55;
+
+      L.polyline(pathCoords(['northForkUpstream', 'lakeGeorgetown', 'northFork', 'confluence']), {
+        color: '#00e0ff',
+        weight: northWeight,
+        opacity: northOpacity
+      }).addTo(followWaterLayer);
+
+      L.polyline(pathCoords(['southForkUpper', 'southForkUpstream', 'southForkGeorgetown', 'confluence']), {
+        color: '#ffb347',
+        weight: southWeight,
+        opacity: southOpacity
+      }).addTo(followWaterLayer);
+
+      L.polyline(pathCoords(['confluence', 'property', 'berrySanGabrielConvergence', 'downstreamWeir']), {
+        color: '#ff5f6d',
+        weight: downWeight,
+        opacity: downOpacity,
+        dashArray: '10,6'
+      }).addTo(followWaterLayer);
+
+      const dominantFork = northScore > southScore + 10 ? 'North Fork' : southScore > northScore + 10 ? 'South Fork' : 'Both forks';
+      const mapStatus = document.getElementById('mapStatusText');
+      if (mapStatus) {
+        mapStatus.textContent = `Map markers refreshed from snapshot: ${new Date(data.generatedAt).toLocaleString()} | Follow mode: ${dominantFork} is feeding the confluence most strongly right now.`;
+      }
+    }
+
+    function toggleFollowWaterMode() {
+      updateFollowWaterMode(latestSnapshot || {});
+    }
+
+    function ensureMap() {
+      if (riverMap || typeof L === 'undefined') return;
+      riverMap = L.map('riverMap').setView([30.6624, -97.6304], 13);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(riverMap);
+
+      floodplainLayer = createFloodplainLayer();
+      if (document.getElementById('toggleFloodplainLayer')?.checked !== false) {
+        floodplainLayer.addTo(riverMap);
+      }
+
+      MAP_POINTS.forEach(point => {
+        const marker = L.marker([point.lat, point.lon], { icon: buildPointIcon(point) }).addTo(riverMap);
+        marker.bindPopup(point.label);
+        marker.bindTooltip(point.label, { direction: 'top', opacity: 0.9 });
+        riverMapMarkers[point.key] = marker;
+      });
+
+      basePathLayers.south = L.polyline(pathCoords(['southForkUpper', 'southForkUpstream', 'southForkGeorgetown', 'confluence', 'property']), {
+        color: '#ffc48c',
+        weight: 3,
+        opacity: 0.8
+      }).addTo(riverMap);
+
+      basePathLayers.north = L.polyline(pathCoords(['northForkUpstream', 'lakeGeorgetown', 'northFork', 'confluence', 'property']), {
+        color: '#8cf0c2',
+        weight: 3,
+        opacity: 0.8
+      }).addTo(riverMap);
+
+      basePathLayers.downstream = L.polyline(pathCoords(['property', 'berrySanGabrielConvergence', 'downstreamWeir']), {
+        color: '#ffb4b4',
+        weight: 3,
+        opacity: 0.8,
+        dashArray: '6,6'
+      }).addTo(riverMap);
+
+      loadNearbyUsgsStations();
+    }
+
+    function renderMapView(data) {
+      ensureMap();
+      if (!riverMap) return;
+      MAP_POINTS.forEach(point => {
+        const marker = riverMapMarkers[point.key];
+        if (marker) marker.bindPopup(markerPopupHtml(point, data));
+      });
+
+      if (nearbyUsgsLayer) {
+        riverMap.removeLayer(nearbyUsgsLayer);
+        nearbyUsgsLayer = null;
+        nearbyUsgsLoaded = false;
+        if (document.getElementById('toggleNearbyUsgs')?.checked) {
+          loadNearbyUsgsStations(data);
+        }
+      }
+
+      updateFollowWaterMode(data);
+
+      const mapStatus = document.getElementById('mapStatusText');
+      if (mapStatus && !document.getElementById('toggleFollowWaterMode')?.checked) {
+        mapStatus.textContent = `Map markers refreshed from snapshot: ${new Date(data.generatedAt).toLocaleString()}`;
+      }
+
+      const mapSourceRows = document.getElementById('mapSourceRows');
+      if (mapSourceRows) {
+        mapSourceRows.innerHTML = [
+          ['Property marker', 'App property coordinate / pinned property marker'],
+          ['Gauge markers', 'USGS station locations and app gauge readings, including the new D convergence point and E downstream crossing'],
+          ['Confluence marker', 'Operational merge point of the North and South forks at the exact C coordinate you specified'],
+          ['Floodplain overlay', 'FEMA NFHL WMS overlay'],
+          ['Nearby stations overlay', 'USGS monitoring-locations API filtered to river-relevant stations'],
+          ['Follow the water mode', 'Model-derived highlight from upstream gauges to confluence to downstream loading'],
+          ['Basemap', 'OpenStreetMap tile layer']
+        ].map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+      }
+      setTimeout(() => { try { riverMap.invalidateSize(); } catch (_) {} }, 100);
+    }
+
+
+    const FORECAST_INPUT_LIBRARY = [
+      { key: 'mrms', label: 'MRMS observed rainfall', horizon: '0-24 hrs', contribution: 'What actually fell over feeder basins', analystValue: 5, effort: 4, bucket: 'live', currentStatus: 'planned' },
+      { key: 'nwsqpf', label: 'NWS grid forecast / QPF', horizon: '0-7 days', contribution: 'Forecast forcing by local grid/point', analystValue: 4, effort: 2, bucket: 'live', currentStatus: 'partial' },
+      { key: 'wpcero', label: 'WPC Excessive Rainfall Outlook', horizon: '0-5 days', contribution: 'Official heavy-rain / flash-flood regime signal', analystValue: 4, effort: 2, bucket: 'live', currentStatus: 'planned' },
+      { key: 'usace', label: 'USACE lake / release posture', horizon: '0-5 days', contribution: 'North Fork operational realism', analystValue: 4, effort: 3, bucket: 'live', currentStatus: 'active' },
+      { key: 'nwm', label: 'NOAA National Water Model', horizon: '1-10 days', contribution: 'Official hydrologic guidance and reach outlook', analystValue: 5, effort: 4, bucket: 'hydro', currentStatus: 'planned' },
+      { key: 'wgrfc', label: 'WGRFC products', horizon: '1-5 days', contribution: 'Regional river and basin forecast context', analystValue: 4, effort: 3, bucket: 'hydro', currentStatus: 'planned' },
+      { key: 'cpc', label: 'CPC 6-10 / 8-14 day outlooks', horizon: '6-14 days', contribution: 'Wet-pattern risk for preparedness posture', analystValue: 3, effort: 1, bucket: 'pattern', currentStatus: 'planned' },
+      { key: 'nhc', label: 'NHC tropical / Gulf products', horizon: '1-14 days in season', contribution: 'Official Gulf/tropical context', analystValue: 3, effort: 2, bucket: 'pattern', currentStatus: 'partial' }
+    ];
+
+    function scoreClass(v) {
+      if (v >= 4.5) return 'score-good';
+      if (v >= 3) return 'score-mid';
+      return 'score-low';
+    }
+
+    function sourceStatusBadge(status) {
+      const map = { active: 'GREEN', partial: 'YELLOW', planned: 'ORANGE' };
+      return map[status] || 'YELLOW';
+    }
+
+    function renderForecastInputs(data) {
+      const mrmsAvailable = (data?.mrms?.availableCount || 0) > 0;
+      const sources = FORECAST_INPUT_LIBRARY.map((s) => {
+        if (s.key === 'mrms') return { ...s, currentStatus: mrmsAvailable ? 'active' : 'planned' };
+        return s;
+      });
+      const activeWeighted = sources.reduce((acc, s) => {
+        const statusWeight = s.currentStatus === 'active' ? 1 : s.currentStatus === 'partial' ? 0.55 : 0;
+        return acc + (s.analystValue * 20 * statusWeight);
+      }, 0);
+      const maxWeighted = sources.reduce((acc, s) => acc + (s.analystValue * 20), 0);
+      const readinessPct = Math.round((activeWeighted / maxWeighted) * 100);
+
+      let readinessStatus = 'RED';
+      let readinessText = 'Foundational but still missing major forecast inputs.';
+      if (readinessPct >= 70) {
+        readinessStatus = 'GREEN';
+        readinessText = 'Strong operational forecast support posture.';
+      } else if (readinessPct >= 45) {
+        readinessStatus = 'YELLOW';
+        readinessText = 'Good short-horizon support with important gaps still open.';
+      } else if (readinessPct >= 25) {
+        readinessStatus = 'ORANGE';
+        readinessText = 'Useful nowcast support, but multi-day forecast guidance is still incomplete.';
+      }
+
+      setStatusEl('forecastReadinessStatus', readinessStatus);
+      document.getElementById('forecastReadinessMetric').textContent = `${readinessPct}%`;
+      document.getElementById('forecastReadinessText').textContent = readinessText;
+      document.getElementById('forecastReadinessBar').style.width = `${readinessPct}%`;
+
+      const avgBucket = (bucket) => {
+        const items = sources.filter(s => s.bucket === bucket);
+        return Math.round((items.reduce((acc, s) => acc + (s.currentStatus === 'active' ? 1 : s.currentStatus === 'partial' ? 0.55 : 0), 0) / items.length) * 100);
+      };
+      const bucketStatus = (pct) => pct >= 70 ? 'GREEN' : pct >= 45 ? 'YELLOW' : pct >= 25 ? 'ORANGE' : 'RED';
+
+      const liveScore = avgBucket('live');
+      const hydroScore = avgBucket('hydro');
+      const patternScore = avgBucket('pattern');
+
+      setStatusEl('liveForcingStatus', bucketStatus(liveScore));
+      document.getElementById('liveForcingMetric').textContent = `${liveScore}%`;
+      document.getElementById('liveForcingText').textContent = 'Observed rainfall, local forecast forcing, official rainfall threat, and reservoir posture.';
+
+      setStatusEl('hydroGuidanceStatus', bucketStatus(hydroScore));
+      document.getElementById('hydroGuidanceMetric').textContent = `${hydroScore}%`;
+      document.getElementById('hydroGuidanceText').textContent = 'Hydrologic model guidance and regional river forecast context for 1 to 10 days.';
+
+      setStatusEl('patternRiskStatus', bucketStatus(patternScore));
+      document.getElementById('patternRiskMetric').textContent = `${patternScore}%`;
+      document.getElementById('patternRiskText').textContent = 'Longer-horizon wet-pattern and Gulf/tropical context for 6 to 14 day posture.';
+
+      document.getElementById('forecastScorecardRows').innerHTML = sources.map(s => {
+        const badge = sourceStatusBadge(s.currentStatus);
+        return `<tr>
+          <td>${s.label}</td>
+          <td>${s.horizon}</td>
+          <td>${s.contribution}</td>
+          <td class="${scoreClass(s.analystValue)}">${s.analystValue}/5</td>
+          <td>${s.effort}/5</td>
+          <td><span class="status ${badge}">${s.currentStatus.toUpperCase()}</span></td>
+        </tr>`;
+      }).join('');
+
+      const propertyMrms = data?.mrms?.points?.property || null;
+      const northMrms = data?.mrms?.points?.northFork || null;
+      const southMrms = data?.mrms?.points?.southFork || null;
+      const localMrms = data?.mrms?.points?.localArea || null;
+      setStatusEl('mrmsStatus', mrmsAvailable ? 'GREEN' : 'ORANGE');
+      document.getElementById('mrmsMetric').textContent = propertyMrms?.qpe6h == null ? '--' : `${fmt(propertyMrms.qpe6h)} in`;
+      document.getElementById('mrmsText').textContent = mrmsAvailable
+        ? `Observed radar-only rainfall from NOAA MRMS. Property 6h accumulation shown above.`
+        : 'MRMS observed rainfall is not available in this snapshot yet.';
+      document.getElementById('mrmsRows').innerHTML = [
+        ['Property', propertyMrms?.qpe1h == null ? '--' : `${fmt(propertyMrms.qpe1h)} / ${fmt(propertyMrms.qpe3h)} / ${fmt(propertyMrms.qpe6h)} / ${fmt(propertyMrms.qpe24h)} in (1h/3h/6h/24h)`],
+        ['North Fork Basin', northMrms?.qpe1h == null ? '--' : `${fmt(northMrms.qpe1h)} / ${fmt(northMrms.qpe3h)} / ${fmt(northMrms.qpe6h)} / ${fmt(northMrms.qpe24h)} in`],
+        ['South Fork Basin', southMrms?.qpe1h == null ? '--' : `${fmt(southMrms.qpe1h)} / ${fmt(southMrms.qpe3h)} / ${fmt(southMrms.qpe6h)} / ${fmt(southMrms.qpe24h)} in`],
+        ['Local Area', localMrms?.qpe1h == null ? '--' : `${fmt(localMrms.qpe1h)} / ${fmt(localMrms.qpe3h)} / ${fmt(localMrms.qpe6h)} / ${fmt(localMrms.qpe24h)} in`],
+        ['MRMS valid time', propertyMrms?.validEndTime ? new Date(propertyMrms.validEndTime).toLocaleString() : 'unavailable']
+      ].map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+
+      const contribRows = [
+        ['Nowcast strength', 'Current gauges + feeder basin + weather + lake posture already make short-horizon operations useful.'],
+        ['Biggest current gap', mrmsAvailable ? 'Official hydrologic forecast guidance is still missing.' : 'Observed basin rainfall and official hydrologic forecast guidance are still missing.'],
+        ['Most valuable next source', mrmsAvailable ? 'NOAA National Water Model' : 'MRMS observed rainfall'],
+        ['Most valuable model layer', 'NOAA National Water Model'],
+        ['Pattern-risk gap', 'CPC outlooks are not wired yet.']
+      ];
+      document.getElementById('forecastContributionRows').innerHTML = contribRows.map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+
+      const buildOrder = [
+        ['1', 'MRMS observed rainfall', 'Best gain in what already fell reliability.'],
+        ['2', 'WPC ERO', 'Official heavy-rain regime signal.'],
+        ['3', 'WPC QPF / NWS QPF', 'Better rainfall forcing into short-term outlooks.'],
+        ['4', 'USACE normalization', 'Continue strengthening North Fork reservoir realism.'],
+        ['5', 'NOAA National Water Model', 'Biggest jump in 1-10 day hydrologic guidance.'],
+        ['6', 'WGRFC products', 'Regional forecast context and cross-checks.'],
+        ['7', 'CPC outlooks', '6-14 day wet-pattern posture.']
+      ];
+      document.getElementById('forecastBuildOrderRows').innerHTML = buildOrder.map(([a,b,c]) => `<tr><th>${a}</th><td><div>${b}</div><div class="small">${c}</div></td></tr>`).join('');
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(`tab-${tabName}`)?.classList.add('active');
+      document.querySelector(`.tab-btn[data-tab="${tabName}"]`)?.classList.add('active');
+      if (tabName === 'map') setTimeout(() => { try { riverMap?.invalidateSize(); } catch (_) {} }, 120);
+    }
+
+    const HISTORICAL_ANALOGS = {
+      july2025: {
+        name: 'July 2025 flood',
+        southForkCrestFt: 37.36,
+        combinedLoadIndexRef: 52.0,
+        northForkReferenceFt: 9.0,
+        berryReferenceFt: 20.0,
+        weirReferenceFt: 16.0,
+        notes: 'Major South Fork-driven event used as the primary flood anchor.'
+      },
+      springRunoff: {
+        name: 'Spring runoff posture',
+        southForkCrestFt: 8.0,
+        combinedLoadIndexRef: 12.0,
+        northForkReferenceFt: 5.5,
+        berryReferenceFt: 8.0,
+        weirReferenceFt: 10.0,
+        notes: 'Represents a meaningful but non-catastrophic runoff setup.'
+      },
+      quietBaseline: {
+        name: 'Quiet baseline',
+        southForkCrestFt: 4.0,
+        combinedLoadIndexRef: 8.0,
+        northForkReferenceFt: 4.5,
+        berryReferenceFt: 6.0,
+        weirReferenceFt: 8.0,
+        notes: 'Represents low loading with rivers well within banks.'
+      }
+    };
+
+    function classifyRain(value) {
+      const v = Number(value || 0);
+      if (v >= 3) return { status: 'RED', label: 'Extreme loading' };
+      if (v >= 2) return { status: 'ORANGE', label: 'Heavy loading' };
+      if (v >= 1) return { status: 'YELLOW', label: 'Building' };
+      return { status: 'GREEN', label: 'Low' };
+    }
+
+    function setStatusEl(id, status) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = `status ${statusClass(status)}`;
+      el.textContent = status;
+    }
+
+    function sumPop(periods, count) {
+      return (periods || []).slice(0, count).reduce((acc, p) => acc + Number(p?.probabilityOfPrecipitation || 0), 0);
+    }
+
+    function basinEffectLabel(key) {
+      if (key === 'northFork') return 'Lake rise / release concern';
+      if (key === 'southFork') return 'South Fork surge';
+      return 'Flash runoff / crossings';
+    }
+
+    function basinDisplayName(key) {
+      if (key === 'northFork') return 'North Fork Basin';
+      if (key === 'southFork') return 'South Fork Basin';
+      return 'Local Area';
+    }
+
+    function getBasinLoading(data, key) {
+      const profile = data?.basinWeather?.[key]?.profile || {};
+      const mrmsPoint = data?.mrms?.points?.[key] || null;
+      const observed1h = mrmsPoint?.qpe1h ?? null;
+      const observed3h = mrmsPoint?.qpe3h ?? null;
+      const observed6h = mrmsPoint?.qpe6h ?? null;
+      const observed24h = mrmsPoint?.qpe24h ?? null;
+      const qpf6h = Number(profile.qpf6hIn || 0);
+      const qpf12h = Number(profile.qpf12hIn || 0);
+      const qpf24h = Number(profile.qpf24hIn || 0);
+      const popMax6h = Number(profile.popMax6h || 0);
+      const intense = profile.intenseRainSignal ? 1 : 0;
+
+      const effective6h = observed6h != null
+        ? observed6h
+        : (qpf6h > 0 ? qpf6h : Number((((popMax6h / 100) * 1.25) + (intense * 0.35)).toFixed(2)));
+
+      return {
+        observed1h,
+        observed3h,
+        observed6h,
+        observed24h,
+        qpf6h,
+        qpf12h,
+        qpf24h,
+        effective6h: Number(Number(effective6h || 0).toFixed(2)),
+        popMax6h,
+        intense,
+        sourceNote: observed6h != null ? 'MRMS observed rainfall + NWS forecast precipitation' : (qpf6h > 0 ? 'NWS grid forecast precipitation' : 'NWS forecast fallback estimate'),
+        nextEffect: basinEffectLabel(key)
+      };
+    }
+
+    function classifyLeadTime(hours) {
+      if (hours == null) return { status: 'YELLOW', label: 'Unknown', metric: '--' };
+      if (hours <= 1) return { status: 'RED', label: 'Immediate', metric: '<1 hr' };
+      if (hours <= 3) return { status: 'ORANGE', label: 'Short lead', metric: `${Math.round(hours)} hr` };
+      if (hours <= 8) return { status: 'YELLOW', label: 'Medium lead', metric: `${Math.round(hours)} hr` };
+      return { status: 'GREEN', label: 'Long lead', metric: `${Math.round(hours)} hr` };
+    }
+
+    function estimateLeadTime(data, basin) {
+      const gauges = data?.gauges || [];
+      const northFork = gauges.find(g => g?.gauge?.kind === 'northFork');
+      const southGeo = gauges.find(g => g?.gauge?.kind === 'southForkGeorgetown');
+      const southUpper = gauges.find(g => g?.gauge?.kind === 'southForkUpper');
+      const south183 = gauges.find(g => g?.gauge?.kind === 'southForkUpstream');
+      const northUp = gauges.find(g => g?.gauge?.kind === 'northForkUpstream');
+
+      const nRate = Number(northUp?.trends?.['00065']?.deltaPerHour || 0);
+      const sdRate = Number(southGeo?.trends?.['00065']?.deltaPerHour || 0);
+      const suRate = Number(southUpper?.trends?.['00065']?.deltaPerHour || 0);
+      const s183Rate = Number(south183?.trends?.['00065']?.deltaPerHour || 0);
+
+      const flashWarn = (data?.weather?.alerts?.features || []).some(f => /flash flood warning/i.test(f?.properties?.event || ''));
+      const gateConcern = Boolean(data?.scorecard?.signals?.gateConcern);
+
+      if (basin === 'south') {
+        if (sdRate > 0.2) return 1.5;
+        if (suRate > 0.1 && s183Rate > 0.03) return 2.5;
+        if (suRate > 0.05 || s183Rate > 0.02) return 4.5;
+        if (flashWarn) return 6;
+        return 12;
+      }
+
+      if (basin === 'north') {
+        if (gateConcern && nRate > 0.2) return 2;
+        if (gateConcern && nRate > 0.05) return 4;
+        if (nRate > 0.05) return 8;
+        return 16;
+      }
+
+      if (basin === 'local') {
+        if (flashWarn && (sdRate > 0.2 || nRate > 0.2)) return 1;
+        if (flashWarn) return 2;
+        if (sdRate > 0.05 || nRate > 0.05) return 4;
+        return 10;
+      }
+
+      return null;
+    }
+
+    function estimateTropicalThreat(data) {
+      const alerts = data?.weather?.alerts?.features || [];
+      const periods = data?.weather?.rainSignal?.next12Hours || [];
+      const flashWarn = alerts.some(f => /flash flood warning/i.test(f?.properties?.event || ''));
+      const floodAdvisory = alerts.some(f => /flood advisory/i.test(f?.properties?.event || ''));
+
+      const pop12 = periods.reduce((acc, p) => acc + Number(p?.probabilityOfPrecipitation || 0), 0);
+
+      // Much stricter logic. Generic thunderstorms should not count as tropical-style.
+      const trueTropicalWords = periods.some(p => /(tropical|remnants?|disturbance|cyclone|depression|hurricane)/i.test(p?.shortForecast || ''));
+      const trainingBands = periods.some(p => /(training storms|rain bands|bands of heavy rain|deep tropical moisture)/i.test(p?.shortForecast || ''));
+      const basinStress = (data?.scorecard?.scores?.upstreamConvergence || 0) + (data?.scorecard?.scores?.flashRunoff || 0);
+
+      let score = 0;
+
+      if (pop12 >= 300) score += 20;
+      else if (pop12 >= 220) score += 12;
+      else if (pop12 >= 150) score += 6;
+
+      if (basinStress >= 110) score += 15;
+      else if (basinStress >= 75) score += 8;
+
+      if (flashWarn) score += 10;
+      if (floodAdvisory) score += 4;
+
+      if (trueTropicalWords) score += 35;
+      if (trainingBands) score += 20;
+
+      const tropicalThresholds = (currentThresholdSettings || defaultThresholdSettings()).tropicalThreat;
+      let status = 'GREEN';
+      let posture = 'No strong Gulf/tropical loading signal';
+      if (score >= tropicalThresholds.red) {
+        status = 'RED';
+        posture = 'High Gulf/tropical rain threat posture';
+      } else if (score >= tropicalThresholds.orange) {
+        status = 'ORANGE';
+        posture = 'Elevated Gulf/tropical rain threat posture';
+      } else if (score >= tropicalThresholds.yellow) {
+        status = 'YELLOW';
+        posture = 'Watch for Gulf/tropical-style loading';
+      }
+
+      return {
+        score,
+        status,
+        posture,
+        pop12,
+        flashWarn,
+        floodAdvisory,
+        trueTropicalWords,
+        trainingBands
+      };
+    }
+
+    function estimateConfidence(data) {
+      const gauges = data?.gauges || [];
+      const workingGaugeCount = gauges.filter(g => Object.keys(g?.latest || {}).length > 0 && !g?.error).length;
+      const totalGaugeCount = gauges.length || 1;
+      const workingRatio = workingGaugeCount / totalGaugeCount;
+
+      const hasLakeElevation = data?.lake?.lakeMeta?.currentPoolElevationFt != null;
+      const hasRelease = data?.lake?.lakeMeta?.releaseCfs != null;
+      const hasForecast = Array.isArray(data?.weather?.rainSignal?.next12Hours) && data.weather.rainSignal.next12Hours.length > 0;
+
+      const north = gauges.find(g => g?.gauge?.kind === 'northFork');
+      const south = gauges.find(g => g?.gauge?.kind === 'southForkGeorgetown');
+      const nTrend = north?.trends?.['00065']?.direction || 'unknown';
+      const sTrend = south?.trends?.['00065']?.direction || 'unknown';
+      const agreement = (nTrend === sTrend && nTrend !== 'unknown') ? 1 : 0;
+
+      let score = 0;
+      score += workingRatio * 50;
+      if (hasLakeElevation) score += 15;
+      if (hasRelease) score += 10;
+      if (hasForecast) score += 15;
+      if (agreement) score += 10;
+
+      let status = 'RED';
+      let label = 'Low';
+      if (score >= 80) { status = 'GREEN'; label = 'High'; }
+      else if (score >= 60) { status = 'YELLOW'; label = 'Moderate'; }
+
+      return {
+        score: Math.round(score),
+        status,
+        label,
+        workingGaugeCount,
+        totalGaugeCount,
+        hasLakeElevation,
+        hasRelease,
+        hasForecast,
+        agreement: Boolean(agreement)
+      };
+    }
+
+    function statusClass(s) { return s || 'GREEN'; }
+    function fmt(v, d = 2) { return v === null || v === undefined || Number.isNaN(v) ? '--' : Number(v).toFixed(d); }
+    function buildSparkline(points, width = 320, height = 64) {
+      if (!points || !points.length) {
+        return `<svg class="gauge-spark" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+          <text x="8" y="20" fill="#a7b6d6" font-size="12">No recent series</text>
+        </svg>`;
+      }
+
+      const vals = points.map(p => Number(p.value)).filter(v => Number.isFinite(v));
+      if (!vals.length) {
+        return `<svg class="gauge-spark" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+          <text x="8" y="20" fill="#a7b6d6" font-size="12">No recent series</text>
+        </svg>`;
+      }
+
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      const spread = Math.max(max - min, 0.0001);
+
+      const linePoints = vals.map((v, idx) => {
+        const x = (idx / Math.max(vals.length - 1, 1)) * width;
+        const y = (height - 8) - ((v - min) / spread) * (height - 16);
+        return `${x},${y}`;
+      }).join(' ');
+
+      const latest = vals[vals.length - 1];
+      const first = vals[0];
+      const rising = latest > first;
+      const stroke = rising ? '#8cf0c2' : (latest < first ? '#ffb4b4' : '#f8e18d');
+
+      return `<svg class="gauge-spark" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+        <line x1="0" y1="${height-8}" x2="${width}" y2="${height-8}" stroke="#2c3b5e" stroke-width="1" />
+        <polyline fill="none" stroke="${stroke}" stroke-width="3" points="${linePoints}" />
+      </svg>`;
+    }
+
+    function getDirectionVisual(trend, deltaPerHour) {
+      const rate = Math.abs(Number(deltaPerHour || 0));
+      if (trend === 'rising') {
+        const label = rate > 0.5 ? 'Rapid rise' : rate > 0.2 ? 'Moderate rise' : rate > 0.05 ? 'Slow rise' : 'Slight rise';
+        return { arrow: '↑', badge: label, badgeClass: 'badge-rise' };
+      }
+      if (trend === 'falling') {
+        const label = rate > 0.5 ? 'Rapid fall' : rate > 0.2 ? 'Moderate fall' : rate > 0.05 ? 'Slow fall' : 'Slight fall';
+        return { arrow: '↓', badge: label, badgeClass: 'badge-fall' };
+      }
+      return { arrow: '→', badge: 'Steady', badgeClass: 'badge-steady' };
+    }
+
+    function buildThresholdLines(g, rawStage) {
+      const kind = g?.gauge?.kind;
+      const thresholdSettings = currentThresholdSettings || defaultThresholdSettings();
+      const stages = (kind === 'southForkGeorgetown' || kind === 'northFork')
+        ? thresholdSettings.southForkStages
+        : (g?.gauge?.stages || thresholdSettings.southForkStages);
+      const lines = [];
+
+      if ((kind === 'southForkGeorgetown' || kind === 'northFork') && rawStage != null) {
+        const order = [
+          ['Action', stages.action],
+          ['Minor', stages.minor],
+          ['Moderate', stages.moderate],
+          ['Major', stages.major]
+        ].filter(([,v]) => v != null);
+
+        for (const [label, value] of order) {
+          const diff = Number((value - rawStage).toFixed(2));
+          if (diff > 0) {
+            lines.push(`${fmt(diff)} ft below ${label.toLowerCase()}`);
+          } else if (diff === 0) {
+            lines.push(`At ${label.toLowerCase()} stage`);
+          } else {
+            lines.push(`${fmt(Math.abs(diff))} ft above ${label.toLowerCase()}`);
+          }
+        }
+      }
+
+      if ((kind === 'berryCreek' || kind === 'downstreamWeir') && rawStage != null) {
+        const thresholdSettings = currentThresholdSettings || defaultThresholdSettings();
+        const thresholds = thresholdSettings.berryWeirIndex;
+        const order = [
+          ['Action', thresholds.action],
+          ['Minor', thresholds.minor],
+          ['Moderate', thresholds.moderate],
+          ['Major', thresholds.major]
+        ];
+        for (const [label, value] of order) {
+          const diff = Number((value - rawStage).toFixed(2));
+          if (diff > 0) {
+            lines.push(`${fmt(diff)} below ${label.toLowerCase()} index`);
+          } else if (diff === 0) {
+            lines.push(`At ${label.toLowerCase()} index`);
+          } else {
+            lines.push(`${fmt(Math.abs(diff))} above ${label.toLowerCase()} index`);
+          }
+        }
+      }
+
+      return lines;
+    }
+
+    function buildCombinedThresholdLines(combinedValue) {
+      if (combinedValue == null) return [];
+      const thresholdSettings = currentThresholdSettings || defaultThresholdSettings();
+      const thresholds = thresholdSettings.combinedIndex;
+      const order = [
+        ['Action', thresholds.action],
+        ['Minor', thresholds.minor],
+        ['Moderate', thresholds.moderate],
+        ['Major', thresholds.major]
+      ];
+      return order.map(([label, value]) => {
+        const diff = Number((value - combinedValue).toFixed(2));
+        if (diff > 0) return `${fmt(diff)} below ${label.toLowerCase()} index`;
+        if (diff === 0) return `At ${label.toLowerCase()} index`;
+        return `${fmt(Math.abs(diff))} above ${label.toLowerCase()} index`;
+      });
+    }
+
+    function renderGauge(g) {
+      const kind = g?.gauge?.kind;
+      const rawStage = g?.latest?.['00065']?.value;
+      const flow = g?.latest?.['00060']?.value;
+      const trendObj = g?.trends?.['00065'] || {};
+      const trend = trendObj.direction || 'unknown';
+      const deltaPerHour = trendObj.deltaPerHour;
+      const delta = trendObj.delta;
+      const spark = buildSparkline(g?.series?.['00065'] || []);
+      const extras = [];
+
+      let metricLabel = 'ft';
+      let metricValue = fmt(rawStage);
+      let secondary = '';
+
+      if (kind === 'southForkUpstream' && rawStage != null && rawStage > 100) {
+        metricLabel = 'ft rise';
+        metricValue = delta == null ? '--' : `${delta >= 0 ? '+' : ''}${fmt(delta, 2)}`;
+        secondary = `<div class="small">Datum elevation: ${fmt(rawStage, 2)} ft</div><div class="small">This gauge is best read as a growth signal, not river depth.</div>`;
+      }
+
+      if (g?.error) {
+        extras.push(`<div class="small" style="color:#ffb4b4;">Error: ${g.error}</div>`);
+      } else if (rawStage == null && flow == null) {
+        extras.push(`<div class="small" style="color:#ffc48c;">No stage/flow values returned for this gauge.</div>`);
+      }
+
+      if (g?.debug?.latestKeys) {
+        extras.push(`<div class="small">Keys: ${g.debug.latestKeys.join(', ') || 'none'}</div>`);
+      }
+
+      const visual = getDirectionVisual(trend, deltaPerHour);
+      const thresholdLines = buildThresholdLines(g, rawStage);
+      const thresholdBlock = thresholdLines.length
+        ? `<div class="prox">${thresholdLines.map(line => `<div class="prox-line">${line}</div>`).join('')}</div>`
+        : '';
+
+      return `
+        <div class="card">
+          <div class="label">${g.gauge.role}</div>
+          <div class="gauge-head">
+            <div>
+              <h3>${g.gauge.shortName}</h3>
+              <div class="metric">${metricValue} ${metricLabel}</div>
+            </div>
+            <div class="dir-wrap">
+              <div class="dir-arrow">${visual.arrow}</div>
+              <div class="dir-badge ${visual.badgeClass}">${visual.badge}</div>
+            </div>
+          </div>
+          <div class="small">Flow: ${fmt(flow)} cfs</div>
+          <div class="small">Trend: ${trend}${deltaPerHour == null ? '' : ` (${fmt(deltaPerHour, 3)} ft/hr)`}</div>
+          ${secondary}
+          ${thresholdBlock}
+          ${spark}
+          <div class="small">Gauge ID: ${g.gauge.id}</div>
+          ${extras.join('')}
+        </div>`;
+    }
+
+    function renderCombinedLoadCard(northGauge, southGauge) {
+      const northStage = northGauge?.latest?.['00065']?.value ?? null;
+      const southStage = southGauge?.latest?.['00065']?.value ?? null;
+      const northTrend = northGauge?.trends?.['00065'] || {};
+      const southTrend = southGauge?.trends?.['00065'] || {};
+      const combinedValue = (northStage == null && southStage == null)
+        ? null
+        : Number(((northStage || 0) + (southStage || 0)).toFixed(2));
+      const combinedRate = Number(((northTrend.deltaPerHour || 0) + (southTrend.deltaPerHour || 0)).toFixed(3));
+      const trend = combinedRate > 0.05 ? 'rising' : combinedRate < -0.05 ? 'falling' : 'steady';
+      const visual = getDirectionVisual(trend, combinedRate);
+      const lines = buildCombinedThresholdLines(combinedValue);
+      const northSeries = northGauge?.series?.['00065'] || [];
+      const southSeries = southGauge?.series?.['00065'] || [];
+      const combinedSeries = [];
+      const len = Math.max(northSeries.length, southSeries.length);
+      for (let i = 0; i < len; i++) {
+        const n = Number(northSeries[i]?.value || 0);
+        const s = Number(southSeries[i]?.value || 0);
+        const t = northSeries[i]?.time || southSeries[i]?.time;
+        if (t) combinedSeries.push({ time: t, value: n + s });
+      }
+      const spark = buildSparkline(combinedSeries);
+      const thresholdBlock = lines.length
+        ? `<div class="prox">${lines.map(line => `<div class="prox-line">${line}</div>`).join('')}</div>`
+        : '';
+
+      return `
+        <div class="card">
+          <div class="label">combined-local-load</div>
+          <div class="gauge-head">
+            <div>
+              <h3>North + South combined load</h3>
+              <div class="metric">${combinedValue == null ? '--' : fmt(combinedValue)} index</div>
+            </div>
+            <div class="dir-wrap">
+              <div class="dir-arrow">${visual.arrow}</div>
+              <div class="dir-badge ${visual.badgeClass}">${visual.badge}</div>
+            </div>
+          </div>
+          <div class="small">North Fork + South Fork Georgetown operational index</div>
+          <div class="small">Trend: ${trend} (${fmt(combinedRate, 3)} index/hr)</div>
+          ${thresholdBlock}
+          ${spark}
+          <div class="small">Operational index only, not literal water depth.</div>
+        </div>`;
+    }
+    function drawHistory(items) {
+      const svg = document.getElementById('propertyHistoryChart');
+      if (!items.length) { svg.innerHTML = ''; return; }
+      const values = items.map(i => Number(i.propertyScore || 0));
+      const max = Math.max(100, ...values);
+      const min = Math.min(0, ...values);
+      const points = values.map((v, idx) => {
+        const x = (idx / Math.max(values.length - 1, 1)) * 600;
+        const y = 110 - ((v - min) / Math.max(max - min, 1)) * 100;
+        return `${x},${y}`;
+      }).join(' ');
+      svg.innerHTML = `
+        <line x1="0" y1="110" x2="600" y2="110" stroke="#2c3b5e" stroke-width="1" />
+        <polyline fill="none" stroke="#8cf0c2" stroke-width="3" points="${points}" />
+      `;
+    }
+
+    function formatCountdown(ms) {
+      const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    function formatPeriodLabel(p) {
+      if (p?.name && p.name.trim()) return p.name;
+      if (!p?.startTime) return '--';
+      return new Date(p.startTime).toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'short'
+      });
+    }
+
+    function updateCountdownText() {
+      const el = document.getElementById('nextRefresh');
+      if (!el) return;
+      if (!nextRefreshAt) {
+        el.textContent = `Auto refresh: every ${Math.round(autoRefreshMs / 60000)} minutes`;
+        return;
+      }
+      const remaining = nextRefreshAt - Date.now();
+      el.textContent = remaining <= 0
+        ? 'Auto refresh: refreshing now...'
+        : `Next auto refresh in ${formatCountdown(remaining)}`;
+    }
+
+    function scheduleAutoRefresh() {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      if (countdownTimer) clearInterval(countdownTimer);
+
+      nextRefreshAt = Date.now() + autoRefreshMs;
+      updateCountdownText();
+
+      countdownTimer = setInterval(updateCountdownText, 1000);
+      refreshTimer = setTimeout(() => {
+        refreshNow(true);
+      }, autoRefreshMs);
+    }
+
+    async function loadSnapshot() {
+      const res = await fetch('/api/snapshot');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Unable to load snapshot');
+
+      latestSnapshot = data;
+      if (data?.settings?.thresholds) renderThresholdSettings(data.settings.thresholds);
+      document.getElementById('propertyName').textContent = data.property.name;
+      document.getElementById('updatedAt').textContent = `Last refresh: ${new Date(data.generatedAt).toLocaleString()}`;
+      const basinUpdatedEl = document.getElementById('basinTabUpdated');
+      if (basinUpdatedEl) basinUpdatedEl.textContent = `Feeder Basin tab data refreshes with the same snapshot: ${new Date(data.generatedAt).toLocaleString()}`;
+
+      const sc = data.scorecard;
+      document.getElementById('propertyStatus').className = `status ${statusClass(sc.statuses.property)}`;
+      document.getElementById('propertyStatus').textContent = sc.statuses.property;
+      document.getElementById('propertyScore').textContent = sc.scores.property;
+      document.getElementById('riverStatus').className = `status ${statusClass(sc.statuses.river)}`;
+      document.getElementById('riverStatus').textContent = sc.statuses.river;
+      document.getElementById('riverScore').textContent = sc.scores.river;
+      document.getElementById('flashStatus').className = `status ${statusClass(sc.statuses.flashRunoff)}`;
+      document.getElementById('flashStatus').textContent = sc.statuses.flashRunoff;
+      document.getElementById('flashScore').textContent = sc.scores.flashRunoff;
+      document.getElementById('convergenceStatus').className = `status ${statusClass(sc.statuses.upstreamConvergence)}`;
+      document.getElementById('convergenceStatus').textContent = sc.statuses.upstreamConvergence;
+      document.getElementById('convergenceScore').textContent = sc.scores.upstreamConvergence;
+      document.getElementById('damStatus').className = `status ${statusClass(sc.statuses.northForkDam)}`;
+      document.getElementById('damStatus').textContent = sc.statuses.northForkDam;
+      document.getElementById('damScore').textContent = sc.scores.northForkDam;
+
+      const hist = sc.historicalComparison;
+      const northForkGauge = (data.gauges || []).find(g => g?.gauge?.kind === 'northFork');
+      const southForkGauge = (data.gauges || []).find(g => g?.gauge?.kind === 'southForkGeorgetown');
+      const northStage = northForkGauge?.latest?.['00065']?.value ?? null;
+      const southStage = southForkGauge?.latest?.['00065']?.value ?? null;
+      const combinedForkIndex = (northStage == null && southStage == null)
+        ? null
+        : Number(((northStage || 0) + (southStage || 0)).toFixed(2));
+
+      document.getElementById('historicalMetric').textContent = hist ? `${fmt(hist.percentOfJuly2025, 1)}%` : '--';
+      document.getElementById('historicalText').innerHTML = hist
+        ? `North Fork near Georgetown: <strong>${fmt(northStage)} ft</strong><br>` +
+          `South Fork at Georgetown: <strong>${fmt(southStage)} ft</strong><br>` +
+          `Combined fork load index: <strong>${combinedForkIndex == null ? '--' : fmt(combinedForkIndex)}</strong><br>` +
+          `July 2025 South Fork crest reference: <strong>${fmt(hist.july2025CrestFt)} ft</strong><br>` +
+          `Current South Fork Georgetown stage is ${fmt(hist.currentStageFt)} ft, which is ${fmt(hist.percentOfJuly2025, 1)}% of the July 2025 crest.`
+        : 'North/South fork comparison unavailable.';
+
+      document.getElementById('reasons').innerHTML = sc.reasons.map(r => `<li>${r}</li>`).join('');
+      const allGauges = data.gauges || [];
+      const northForkLakeGauge = allGauges.find(g => g?.gauge?.kind === 'northForkUpstream');
+      const northForkLocalGauge = allGauges.find(g => g?.gauge?.kind === 'northFork');
+      const southForkUpperGauge = allGauges.find(g => g?.gauge?.kind === 'southForkUpper');
+      const southFork183Gauge = allGauges.find(g => g?.gauge?.kind === 'southForkUpstream');
+      const southForkLocalGauge = allGauges.find(g => g?.gauge?.kind === 'southForkGeorgetown');
+      const berryGauge = allGauges.find(g => g?.gauge?.kind === 'berryCreek');
+      const weirGauge = allGauges.find(g => g?.gauge?.kind === 'downstreamWeir');
+
+      document.getElementById('northForkLakeGauge').innerHTML = northForkLakeGauge
+        ? renderGauge(northForkLakeGauge)
+        : '<div class="small muted">No North Fork lake inflow gauge available.</div>';
+
+      document.getElementById('southForkUpstreamCluster').innerHTML = [
+        southForkUpperGauge ? renderGauge(southForkUpperGauge) : '<div class="card"><div class="small muted">S Fk at SH 1869 unavailable.</div></div>',
+        southFork183Gauge ? renderGauge(southFork183Gauge) : '<div class="card"><div class="small muted">South Fork at Hwy 183 unavailable.</div></div>'
+      ].join('');
+
+      document.getElementById('localCluster').innerHTML = [
+        northForkLocalGauge ? renderGauge(northForkLocalGauge) : '<div class="card"><div class="small muted">North Fork near Georgetown unavailable.</div></div>',
+        southForkLocalGauge ? renderGauge(southForkLocalGauge) : '<div class="card"><div class="small muted">South Fork at Georgetown unavailable.</div></div>',
+        renderCombinedLoadCard(northForkLocalGauge, southForkLocalGauge)
+      ].join('');
+
+      document.getElementById('downstreamLoadCluster').innerHTML = [
+        renderCombinedLoadCard(northForkLocalGauge, southForkLocalGauge),
+        berryGauge ? renderGauge(berryGauge) : '<div class="card"><div class="small muted">Berry Creek at Airport Rd unavailable.</div></div>',
+        weirGauge ? renderGauge(weirGauge) : '<div class="card"><div class="small muted">San Gabriel near Weir unavailable.</div></div>'
+      ].join('');
+
+      const alerts = data.weather.alerts.features || [];
+      document.getElementById('alerts').innerHTML = alerts.length
+        ? alerts.map(a => `<div style="margin-bottom:12px;"><strong>${a.properties.event}</strong><div class="small">${a.properties.headline || ''}</div></div>`).join('')
+        : '<div class="muted">No active alerts for the property point.</div>';
+
+      const lakeMeta = data.lake?.lakeMeta || {};
+      document.getElementById('lakeSummary').textContent = data.lake?.lakeMeta
+        ? `Lake elevation from ${data.lake.lakeMeta.elevationSource} | 24h change from ${data.lake.lakeMeta.change24hSource} | release from ${data.lake.lakeMeta.releaseSource}${data.lake?.lakeMeta?.feetBelowSpillway == null ? '' : ` | ${fmt(data.lake.lakeMeta.feetBelowSpillway)} ft below spillway`}${data.scorecard?.signals?.gateConcern ? ' | gate concern active' : ''}`
+        : 'Lake summary unavailable.';
+      const lakeElevation = lakeMeta.currentPoolElevationFt;
+      const lakeVsConservation = (lakeElevation == null || lakeMeta.conservationPoolFt == null)
+        ? null
+        : Number((lakeElevation - lakeMeta.conservationPoolFt).toFixed(2));
+      const lakeThresholdRows = [
+        ['Lake elevation', lakeElevation == null ? 'unavailable' : `${fmt(lakeElevation)} ft`],
+        ['24h change', lakeMeta.change24hFt == null ? 'unavailable' : `${lakeMeta.change24hFt >= 0 ? '+' : ''}${fmt(lakeMeta.change24hFt)} ft`],
+        ['Release', lakeMeta.releaseCfs == null ? 'unavailable' : `${fmt(lakeMeta.releaseCfs, 0)} cfs`],
+        ['Spillway crest', lakeMeta.spillwayCrestFt == null ? 'unavailable' : `${fmt(lakeMeta.spillwayCrestFt)} ft`],
+        ['Feet below spillway', lakeMeta.feetBelowSpillway == null ? 'unavailable' : `${fmt(lakeMeta.feetBelowSpillway)} ft`],
+        ['Conservation pool', lakeMeta.conservationPoolFt == null ? 'unavailable' : `${fmt(lakeMeta.conservationPoolFt)} ft`],
+        ['Lake vs conservation', lakeVsConservation == null ? 'unavailable' : (lakeVsConservation >= 0 ? `${fmt(lakeVsConservation)} ft above pool` : `${fmt(Math.abs(lakeVsConservation))} ft below pool`)],
+        ['Top of dam', lakeMeta.topOfDamFt == null ? 'unavailable' : `${fmt(lakeMeta.topOfDamFt)} ft`]
+      ];
+      document.getElementById('lakeRows').innerHTML = lakeThresholdRows.map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+
+      const rows = (data.weather.rainSignal?.next12Hours || []).map(p => `<tr><td>${formatPeriodLabel(p)}</td><td>${p.probabilityOfPrecipitation ?? '--'}%</td><td>${p.shortForecast || '--'}</td></tr>`).join('');
+      document.getElementById('forecastRows').innerHTML = rows || '<tr><td colspan="3" class="muted">No forecast periods available.</td></tr>';
+
+      const history = data.history || [];
+      drawHistory(history);
+
+            const northBasin = getBasinLoading(data, 'northFork');
+      const southBasin = getBasinLoading(data, 'southFork');
+      const localBasin = getBasinLoading(data, 'localArea');
+
+      const northRain = classifyRain(northBasin.effective6h);
+      const southRain = classifyRain(southBasin.effective6h);
+      const localRain = classifyRain(localBasin.effective6h);
+
+      setStatusEl('northForkRainStatus', northRain.status);
+      setStatusEl('southForkRainStatus', southRain.status);
+      setStatusEl('localRainStatus', localRain.status);
+
+      document.getElementById('northForkRainMetric').textContent = northBasin.observed6h == null ? `${fmt(northBasin.effective6h)} in next 6h` : `${fmt(northBasin.observed6h)} in obs 6h`;
+      document.getElementById('southForkRainMetric').textContent = southBasin.observed6h == null ? `${fmt(southBasin.effective6h)} in next 6h` : `${fmt(southBasin.observed6h)} in obs 6h`;
+      document.getElementById('localRainMetric').textContent = localBasin.observed6h == null ? `${fmt(localBasin.effective6h)} in next 6h` : `${fmt(localBasin.observed6h)} in obs 6h`;
+
+      document.getElementById('northForkRainText').textContent = `${northRain.label}. MRMS obs 6h: ${fmt(northBasin.observed6h)} in. QPF 12h: ${fmt(northBasin.qpf12h)} in. Source: ${northBasin.sourceNote}. Main effect likely next: ${northBasin.nextEffect}.`;
+      document.getElementById('southForkRainText').textContent = `${southRain.label}. MRMS obs 6h: ${fmt(southBasin.observed6h)} in. QPF 12h: ${fmt(southBasin.qpf12h)} in. Source: ${southBasin.sourceNote}. Main effect likely next: ${southBasin.nextEffect}.`;
+      document.getElementById('localRainText').textContent = `${localRain.label}. MRMS obs 6h: ${fmt(localBasin.observed6h)} in. QPF 12h: ${fmt(localBasin.qpf12h)} in. Source: ${localBasin.sourceNote}. Main effect likely next: ${localBasin.nextEffect}.`;
+
+      document.getElementById('rainfallOutlookRows').innerHTML = [
+        ['North Fork Basin', `${northRain.label} | obs6 ${fmt(northBasin.observed6h)} in | qpf12 ${fmt(northBasin.qpf12h)} in | obs24 ${fmt(northBasin.observed24h)} in`, northBasin.nextEffect],
+        ['South Fork Basin', `${southRain.label} | obs6 ${fmt(southBasin.observed6h)} in | qpf12 ${fmt(southBasin.qpf12h)} in | obs24 ${fmt(southBasin.observed24h)} in`, southBasin.nextEffect],
+        ['Local Area', `${localRain.label} | obs6 ${fmt(localBasin.observed6h)} in | qpf12 ${fmt(localBasin.qpf12h)} in | obs24 ${fmt(localBasin.observed24h)} in`, localBasin.nextEffect]
+      ].map(([a,b,c]) => `<tr><td>${a}</td><td>${b}</td><td>${c}</td></tr>`).join('');
+
+      const confidence = estimateConfidence(data);
+      setStatusEl('confidenceStatus', confidence.status);
+      document.getElementById('confidenceMetric').textContent = `${confidence.score}%`;
+      document.getElementById('confidenceText').textContent =
+        `${confidence.label} confidence. This reflects data coverage, lake visibility, forecast availability, and whether key local gauges agree.`;
+      document.getElementById('confidenceRows').innerHTML = [
+        ['Working gauges', `${confidence.workingGaugeCount} / ${confidence.totalGaugeCount}`],
+        ['Lake elevation available', confidence.hasLakeElevation ? 'Yes' : 'No'],
+        ['Lake release available', confidence.hasRelease ? 'Yes' : 'No'],
+        ['Forecast/rain signal available', confidence.hasForecast ? 'Yes' : 'No'],
+        ['Key local gauge trend agreement', confidence.agreement ? 'Yes' : 'No']
+      ].map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+
+      const flashWarn = (data?.weather?.alerts?.features || []).some(f => /flash flood warning/i.test(f?.properties?.event || ''));
+      const tropicalWatch = flashWarn ? 'Watch Gulf rainfall pattern if a tropical system is active.' : 'No tropical-system signal wired yet.';
+      const northForkGaugeForAnalog = (data.gauges || []).find(g => g?.gauge?.kind === 'northFork');
+      const southForkGaugeForAnalog = (data.gauges || []).find(g => g?.gauge?.kind === 'southForkGeorgetown');
+      const berryGaugeForAnalog = (data.gauges || []).find(g => g?.gauge?.kind === 'berryCreek');
+      const weirGaugeForAnalog = (data.gauges || []).find(g => g?.gauge?.kind === 'downstreamWeir');
+
+      const northNow = Number(northForkGaugeForAnalog?.latest?.['00065']?.value || 0);
+      const southNow = Number(southForkGaugeForAnalog?.latest?.['00065']?.value || 0);
+      const berryNow = Number(berryGaugeForAnalog?.latest?.['00065']?.value || 0);
+      const weirNow = Number(weirGaugeForAnalog?.latest?.['00065']?.value || 0);
+      const combinedNow = Number((northNow + southNow).toFixed(2));
+
+      const analogScores = Object.values(HISTORICAL_ANALOGS).map(analog => {
+        const parts = [];
+        if (analog.southForkCrestFt) parts.push(Math.abs((southNow / analog.southForkCrestFt) - 1));
+        if (analog.combinedLoadIndexRef) parts.push(Math.abs((combinedNow / analog.combinedLoadIndexRef) - 1));
+        if (analog.northForkReferenceFt) parts.push(Math.abs((northNow / analog.northForkReferenceFt) - 1));
+        if (analog.berryReferenceFt) parts.push(Math.abs((berryNow / analog.berryReferenceFt) - 1));
+        if (analog.weirReferenceFt) parts.push(Math.abs((weirNow / analog.weirReferenceFt) - 1));
+        const distance = parts.reduce((a,b) => a + b, 0) / Math.max(parts.length, 1);
+        return { analog, distance };
+      }).sort((a,b) => a.distance - b.distance);
+
+      const analog = analogScores[0].analog;
+      const southPct = analog.southForkCrestFt ? Number(((southNow / analog.southForkCrestFt) * 100).toFixed(1)) : null;
+      const combinedPct = analog.combinedLoadIndexRef ? Number(((combinedNow / analog.combinedLoadIndexRef) * 100).toFixed(1)) : null;
+      const northPct = analog.northForkReferenceFt ? Number(((northNow / analog.northForkReferenceFt) * 100).toFixed(1)) : null;
+
+      let overallPosture = `Closest to ${analog.name}`;
+      if ((southPct || 0) >= 150 || (combinedPct || 0) >= 150) overallPosture = 'Above chosen analog reference';
+      else if ((southPct || 0) >= 80 || (combinedPct || 0) >= 80) overallPosture = `Approaching ${analog.name}`;
+
+      const lakeSignal = data?.lake?.lakeMeta?.feetBelowSpillway == null
+        ? 'Lake similarity unavailable'
+        : (data.lake.lakeMeta.feetBelowSpillway <= 3 ? 'Lake posture elevated' : 'Lake posture below spillway stress');
+
+      document.getElementById('historicalAnalogRows').innerHTML = [
+        ['Closest analog', analog.name],
+        ['South Fork similarity', southPct == null ? 'unavailable' : `${southPct}% of analog South Fork reference`],
+        ['North Fork similarity', northPct == null ? 'unavailable' : `${northPct}% of analog North Fork reference`],
+        ['Combined load similarity', combinedPct == null ? 'unavailable' : `${combinedPct}% of analog combined load`],
+        ['Berry / Weir relationship', `${fmt(berryNow)} ft Berry | ${fmt(weirNow)} ft Weir`],
+        ['Lake Georgetown similarity', lakeSignal],
+        ['Overall posture', overallPosture],
+        ['Other analogs in library', analogScores.slice(1).map(x => x.analog.name).join(' | ') || 'None'],
+        ['Analog note', analog.notes]
+      ].map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+
+      const northLeadHours = estimateLeadTime(data, 'north');
+      const southLeadHours = estimateLeadTime(data, 'south');
+      const localLeadHours = estimateLeadTime(data, 'local');
+
+      const overallLeadHours = Math.min(
+        ...( [northLeadHours, southLeadHours, localLeadHours].filter(v => v != null).length
+          ? [northLeadHours, southLeadHours, localLeadHours].filter(v => v != null)
+          : [6] )
+      );
+      const lead = classifyLeadTime(overallLeadHours);
+      setStatusEl('leadTimeStatus', lead.status);
+      document.getElementById('leadTimeMetric').textContent = lead.metric;
+      document.getElementById('leadTimeText').textContent =
+        `${lead.label}. Shorter times mean water or runoff impacts may translate faster toward the property or nearby crossings.`;
+
+      document.getElementById('leadTimeRows').innerHTML = [
+        ['North Fork system', classifyLeadTime(northLeadHours).metric, classifyLeadTime(northLeadHours).label],
+        ['South Fork system', classifyLeadTime(southLeadHours).metric, classifyLeadTime(southLeadHours).label],
+        ['Local runoff / crossings', classifyLeadTime(localLeadHours).metric, classifyLeadTime(localLeadHours).label]
+      ].map(([a,b,c]) => `<tr><th>${a}</th><td>${b}</td><td>${c}</td></tr>`).join('');
+
+      const tropical = estimateTropicalThreat(data);
+      setStatusEl('tropicalThreatStatus', tropical.status);
+      document.getElementById('tropicalThreatMetric').textContent = tropical.score;
+      document.getElementById('tropicalThreatText').textContent =
+        `${tropical.posture}. This now gives much less weight to ordinary thunderstorms and much more weight to true tropical wording or repeated rain-band language.`;
+
+      document.getElementById('tropicalThreatRows').innerHTML = [
+        ['12-hour rain posture', `${tropical.pop12} POP-sum`],
+        ['Flash flood warning active', tropical.flashWarn ? 'Yes' : 'No'],
+        ['Flood advisory active', tropical.floodAdvisory ? 'Yes' : 'No'],
+        ['True tropical wording', tropical.trueTropicalWords ? 'Present in forecast text' : 'Not detected'],
+        ['Training/banded rain wording', tropical.trainingBands ? 'Present in forecast text' : 'Not detected'],
+        ['What this means', tropical.status === 'RED'
+          ? 'Treat basin loading like a serious long-duration rain threat.'
+          : tropical.status === 'ORANGE'
+            ? 'Keep Gulf-style rain loading in view if repeated bands continue.'
+            : tropical.status === 'YELLOW'
+              ? 'Watch for persistent rain patterns that can mature into basin loading.'
+              : 'No strong tropical-style loading signal right now.']
+      ].map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+
+      document.getElementById('longRangeRows').innerHTML = [
+        ['Historical analogs', `Active now. Closest analog: ${analog.name}.`],
+        ['Tropical / Gulf rain threat', tropicalWatch],
+        ['Lead time', `Active now. Overall posture: ${lead.label} (${lead.metric}).`],
+        ['Confidence', `Active now. ${confidence.label} confidence at ${confidence.score}%.`]
+      ].map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+
+      renderSourceTransparency(data);
+      renderMapView(data);
+      renderForecastInputs(data);
+      generateIncidentSummary();
+
+      const alertEvents = data.alertEvents || [];
+      document.getElementById('alertEvents').innerHTML = alertEvents.length
+        ? alertEvents.reverse().map(e => `<div class="log-item"><strong>${e.status}</strong> at ${new Date(e.timestamp).toLocaleString()}<br>${e.headline}</div>`).join('')
+        : '<div class="muted">No alerts have been sent yet.</div>';
+    }
+
+    async function refreshNow(isAuto = false) {
+      const btn = document.querySelector('.btn');
+      btn.disabled = true;
+      btn.textContent = isAuto ? 'Auto refreshing...' : 'Refreshing...';
+      try {
+        await fetch('/api/refresh', { method: 'POST' });
+        await loadSnapshot();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Refresh now';
+        scheduleAutoRefresh();
+      }
+    }
+
+    loadSettings();
+    reloadThresholdSettings().catch(() => renderThresholdSettings(defaultThresholdSettings()));
+    loadSnapshot().then(() => {
+      scheduleAutoRefresh();
+    }).catch(err => {
+      document.getElementById('propertyName').textContent = 'Unable to load dashboard';
+      document.getElementById('updatedAt').textContent = err.message;
+      document.getElementById('gauges').innerHTML = `<div class="card"><div class="small" style="color:#ffb4b4;">Dashboard load failed: ${err.message}</div></div>`;
+      document.getElementById('nextRefresh').textContent = 'Auto refresh unavailable until the dashboard loads correctly.';
+    });
+  </script>
+</body>
+</html>

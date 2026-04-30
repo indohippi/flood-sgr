@@ -1,0 +1,14 @@
+{
+  "name": "san-gabriel-flood-monitor",
+  "version": "0.1.0",
+  "description": "Small-group flood monitoring dashboard for the San Gabriel forks near Georgetown, TX",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
