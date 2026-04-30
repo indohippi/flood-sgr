@@ -328,4 +328,6 @@ This build merges the Forecast Inputs tab into the uploaded marker-relocation-v3
 
 This build adds first-pass NOAA MRMS observed rainfall integration using the NOAA/NWS MRMS QPE Image Service. It samples 1h, 3h, 6h, 12h, and 24h radar-only QPE for the property, North Fork basin point, South Fork basin point, and local area point, then uses those observations in the Feeder Basin Rainfall and Forecast Inputs tabs.
 #   f l o o d - m o n i t o r  
+ #   f l o o d - m o n i t o r  
+ #   f l o o d - s g r  
  
