@@ -324,10 +324,16 @@ This build moves C to 30.646995, -97.671304, moves the downstream Weir crossing 
 This build merges the Forecast Inputs tab into the uploaded marker-relocation-v3 branch so you get both the updated map work and the forecast scorecard in one package.
 
 
-## MRMS integration
+## Radar overlay + feeder basin polygons
 
-This build adds first-pass NOAA MRMS observed rainfall integration using the NOAA/NWS MRMS QPE Image Service. It samples 1h, 3h, 6h, 12h, and 24h radar-only QPE for the property, North Fork basin point, South Fork basin point, and local area point, then uses those observations in the Feeder Basin Rainfall and Forecast Inputs tabs.
-#   f l o o d - m o n i t o r  
- #   f l o o d - m o n i t o r  
- #   f l o o d - s g r  
- 
+This build adds a live NOAA nowCOAST radar overlay and toggleable feeder-basin polygon overlays to the Map View tab. The map now supports live radar, floodplain, feeder basins, nearby USGS stations, and follow-the-water highlighting together on one operational canvas.
+
+
+## Radar + overlay visibility fix
+
+This build switches the radar layer to the nowCOAST ArcGIS WMS endpoint, increases radar opacity, darkens the FEMA floodplain overlay, and increases feeder-basin line/fill visibility.
+
+
+## V2 + V3 combined testing release
+
+This build renames Overview to Current Overview, adds a 5hr Forecast Overview tab, splits hydrologic guidance into Operational Hydrology and Official Model Guidance, adds a first-pass Basin Saturation Index, refactors the main overview into River Condition / Floodplain Activation / Property Impact, and adds broad mouseover help text to major widgets.
