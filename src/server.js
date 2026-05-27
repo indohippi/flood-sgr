@@ -4,7 +4,6 @@ const config = require('./config');
 const { fetchGaugeBundle } = require('./usgs');
 const { fetchPointMetadata, fetchForecast, fetchActiveAlerts, extractRainSignal, extractBasinRainfallProfile } = require('./weather');
 const { fetchLakeGeorgetownBundle } = require('./lake');
-const { fetchMrmsBundle } = require('./mrms');
 const { evaluateFloodRisk } = require('./scoring');
 const {
   ensureStorage,
@@ -44,6 +43,17 @@ function getThresholdSettings() {
     berryWeirIndex: { ...DEFAULT_THRESHOLD_SETTINGS.berryWeirIndex, ...(state.thresholdSettings?.berryWeirIndex || {}) },
     tropicalThreat: { ...DEFAULT_THRESHOLD_SETTINGS.tropicalThreat, ...(state.thresholdSettings?.tropicalThreat || {}) }
   };
+}
+
+function validateThreshold(value, min = -100, max = 1000) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) {
+    throw new Error(`Invalid threshold value: must be a finite number`);
+  }
+  if (num < min || num > max) {
+    throw new Error(`Invalid threshold value ${num}: must be between ${min} and ${max}`);
+  }
+  return num;
 }
 
 async function buildSnapshot() {
@@ -96,7 +106,6 @@ async function buildSnapshot() {
   const basinWeather = Object.fromEntries(basinWeatherEntries);
 
   const lakeData = await fetchLakeGeorgetownBundle();
-  const mrms = await fetchMrmsBundle(config.property, config.basinPoints || {});
   const thresholdSettings = getThresholdSettings();
   const scorecard = evaluateFloodRisk({ gaugeBundles, alerts, rainSignal, lakeData, settings: thresholdSettings });
 
@@ -113,7 +122,6 @@ async function buildSnapshot() {
       rainSignal
     },
     basinWeather,
-    mrms,
     lake: lakeData,
     settings: { thresholds: thresholdSettings },
     scorecard
@@ -193,8 +201,7 @@ app.get('/api/health', (_req, res) => {
       latestKeys: Object.keys(g.latest || {}),
       debug: g.debug || null
     })),
-    lakeDebug: cache.data?.lake?.lakeMeta || null,
-    mrmsDebug: cache.data?.mrms || null
+    lakeDebug: cache.data?.lake?.lakeMeta || null
   });
 });
 
@@ -235,38 +242,42 @@ app.get('/api/settings', (_req, res) => {
 });
 
 app.post('/api/settings', async (req, res) => {
-  const incoming = req.body?.thresholds || {};
-  const state = readState();
-  const thresholds = {
-    southForkStages: {
-      action: Number(incoming?.southForkStages?.action ?? DEFAULT_THRESHOLD_SETTINGS.southForkStages.action),
-      minor: Number(incoming?.southForkStages?.minor ?? DEFAULT_THRESHOLD_SETTINGS.southForkStages.minor),
-      moderate: Number(incoming?.southForkStages?.moderate ?? DEFAULT_THRESHOLD_SETTINGS.southForkStages.moderate),
-      major: Number(incoming?.southForkStages?.major ?? DEFAULT_THRESHOLD_SETTINGS.southForkStages.major)
-    },
-    combinedIndex: {
-      action: Number(incoming?.combinedIndex?.action ?? DEFAULT_THRESHOLD_SETTINGS.combinedIndex.action),
-      minor: Number(incoming?.combinedIndex?.minor ?? DEFAULT_THRESHOLD_SETTINGS.combinedIndex.minor),
-      moderate: Number(incoming?.combinedIndex?.moderate ?? DEFAULT_THRESHOLD_SETTINGS.combinedIndex.moderate),
-      major: Number(incoming?.combinedIndex?.major ?? DEFAULT_THRESHOLD_SETTINGS.combinedIndex.major)
-    },
-    berryWeirIndex: {
-      action: Number(incoming?.berryWeirIndex?.action ?? DEFAULT_THRESHOLD_SETTINGS.berryWeirIndex.action),
-      minor: Number(incoming?.berryWeirIndex?.minor ?? DEFAULT_THRESHOLD_SETTINGS.berryWeirIndex.minor),
-      moderate: Number(incoming?.berryWeirIndex?.moderate ?? DEFAULT_THRESHOLD_SETTINGS.berryWeirIndex.moderate),
-      major: Number(incoming?.berryWeirIndex?.major ?? DEFAULT_THRESHOLD_SETTINGS.berryWeirIndex.major)
-    },
-    tropicalThreat: {
-      yellow: Number(incoming?.tropicalThreat?.yellow ?? DEFAULT_THRESHOLD_SETTINGS.tropicalThreat.yellow),
-      orange: Number(incoming?.tropicalThreat?.orange ?? DEFAULT_THRESHOLD_SETTINGS.tropicalThreat.orange),
-      red: Number(incoming?.tropicalThreat?.red ?? DEFAULT_THRESHOLD_SETTINGS.tropicalThreat.red)
-    }
-  };
+  try {
+    const incoming = req.body?.thresholds || {};
+    const state = readState();
+    const thresholds = {
+      southForkStages: {
+        action: validateThreshold(incoming?.southForkStages?.action ?? DEFAULT_THRESHOLD_SETTINGS.southForkStages.action),
+        minor: validateThreshold(incoming?.southForkStages?.minor ?? DEFAULT_THRESHOLD_SETTINGS.southForkStages.minor),
+        moderate: validateThreshold(incoming?.southForkStages?.moderate ?? DEFAULT_THRESHOLD_SETTINGS.southForkStages.moderate),
+        major: validateThreshold(incoming?.southForkStages?.major ?? DEFAULT_THRESHOLD_SETTINGS.southForkStages.major)
+      },
+      combinedIndex: {
+        action: validateThreshold(incoming?.combinedIndex?.action ?? DEFAULT_THRESHOLD_SETTINGS.combinedIndex.action),
+        minor: validateThreshold(incoming?.combinedIndex?.minor ?? DEFAULT_THRESHOLD_SETTINGS.combinedIndex.minor),
+        moderate: validateThreshold(incoming?.combinedIndex?.moderate ?? DEFAULT_THRESHOLD_SETTINGS.combinedIndex.moderate),
+        major: validateThreshold(incoming?.combinedIndex?.major ?? DEFAULT_THRESHOLD_SETTINGS.combinedIndex.major)
+      },
+      berryWeirIndex: {
+        action: validateThreshold(incoming?.berryWeirIndex?.action ?? DEFAULT_THRESHOLD_SETTINGS.berryWeirIndex.action),
+        minor: validateThreshold(incoming?.berryWeirIndex?.minor ?? DEFAULT_THRESHOLD_SETTINGS.berryWeirIndex.minor),
+        moderate: validateThreshold(incoming?.berryWeirIndex?.moderate ?? DEFAULT_THRESHOLD_SETTINGS.berryWeirIndex.moderate),
+        major: validateThreshold(incoming?.berryWeirIndex?.major ?? DEFAULT_THRESHOLD_SETTINGS.berryWeirIndex.major)
+      },
+      tropicalThreat: {
+        yellow: validateThreshold(incoming?.tropicalThreat?.yellow ?? DEFAULT_THRESHOLD_SETTINGS.tropicalThreat.yellow, 0, 100),
+        orange: validateThreshold(incoming?.tropicalThreat?.orange ?? DEFAULT_THRESHOLD_SETTINGS.tropicalThreat.orange, 0, 100),
+        red: validateThreshold(incoming?.tropicalThreat?.red ?? DEFAULT_THRESHOLD_SETTINGS.tropicalThreat.red, 0, 100)
+      }
+    };
 
-  state.thresholdSettings = thresholds;
-  writeState(state);
-  await refreshCache();
-  res.json({ ok: true, thresholds });
+    state.thresholdSettings = thresholds;
+    writeState(state);
+    await refreshCache();
+    res.json({ ok: true, thresholds });
+  } catch (error) {
+    res.status(400).json({ ok: false, error: error.message });
+  }
 });
 
 app.get('*', (_req, res) => {

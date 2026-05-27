@@ -95,7 +95,7 @@
     .badge-rise { background: rgba(31,157,101,.18); color: #8cf0c2; }
     .badge-fall { background: rgba(203,58,58,.18); color: #ffb4b4; }
     .badge-steady { background: rgba(202,162,39,.18); color: #f8e18d; }
-    @media (max-width: 980px) { .topbar, .grid, .gauges, .two-col, .three-col, .two-gauge-col, .settings-grid, .field-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 980px) { .topbar, .grid, .gauges, .two-col, .three-col, .four-col, .two-gauge-col, .settings-grid, .field-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -110,15 +110,16 @@
         <p class="small" id="updatedAt"></p>
       </div>
       <div class="card">
-        <div class="label">Current property status</div>
+        <div class="label tip" title="This top-line tile is the current Property Impact summary. It focuses on meaningful property consequence rather than in-channel river danger alone.">Current Property Impact</div>
         <div id="propertyStatus" class="status">...</div>
         <div id="propertyScore" class="metric">--</div>
-        <div class="small">Composite score based on fork overlap, local stage, flash flood alerts, and forecast rain.</div>
+        <div class="small">Conservative property-impact summary that reacts more slowly than River Condition and Floodplain Activation.</div>
       </div>
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')">Overview</button>
+      <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')">Current Overview</button>
+      <button class="tab-btn" data-tab="forecast5" onclick="switchTab('forecast5')">5hr Forecast Overview</button>
       <button class="tab-btn" data-tab="map" onclick="switchTab('map')">Map View</button>
       <button class="tab-btn" data-tab="forecast" onclick="switchTab('forecast')">Forecast Inputs</button>
       <button class="tab-btn" data-tab="basins" onclick="switchTab('basins')">Feeder Basin Rainfall</button>
@@ -127,71 +128,93 @@
     <p class="small" id="basinTabUpdated" style="margin-top:8px;"></p>
 
     <div id="tab-overview" class="tab-panel active">
-    <div class="grid" style="margin-top:16px;">
-      <div class="card">
-        <div class="label">River risk</div>
-        <div id="riverStatus" class="status">...</div>
-        <div id="riverScore" class="metric">--</div>
-      </div>
-      <div class="card">
-        <div class="label">Flash runoff risk</div>
-        <div id="flashStatus" class="status">...</div>
-        <div id="flashScore" class="metric">--</div>
-      </div>
-      <div class="card">
-        <div class="label">Upstream convergence</div>
-        <div id="convergenceStatus" class="status">...</div>
-        <div id="convergenceScore" class="metric">--</div>
-      </div>
-      <div class="card">
-        <div class="label">North Fork / Lake Georgetown</div>
-        <div id="damStatus" class="status">...</div>
-        <div id="damScore" class="metric">--</div>
-      </div>
-      <div class="card">
-        <div class="label">North/South San Gabriel Load + July 2025 Comparison</div>
-        <div id="historicalMetric" class="metric">--</div>
-        <div class="small" id="historicalText">Loading fork-load comparison...</div>
-      </div>
-    </div>
-
-    <div class="two-col" style="margin-top:16px;">
-      <div class="card">
-        <h2>Why the system thinks this</h2>
-        <ul id="reasons"></ul>
-      </div>
-      <div class="card">
-        <h2>Warning logic</h2>
-        <ul>
-          <li>Primary local gauge: South Fork at Georgetown</li>
-          <li>Upstream convergence watches North Fork inflow plus both upstream South Fork gauges</li>
-          <li>North Fork near Georgetown is downstream of the dam, so Lake Georgetown level and release matter</li>
-          <li>Two upstream South Fork gauges help spot a stacked surge or wall of water moving downstream</li>
-          <li>Weir is treated as a confirmation gauge, not the source of truth</li>
-          <li>Berry Creek can distort downstream interpretation</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:16px;">
-      <div class="label">lake-georgetown-system</div>
-      <h2>Lake Georgetown system cluster</h2>
-      <div class="two-col">
+      <div class="grid" style="margin-top:16px;">
         <div class="card">
-          <h2>North Fork inflow to Lake Georgetown</h2>
-          <div id="northForkLakeGauge"></div>
+          <div class="label tip" title="River Condition measures how loaded, fast, and dangerous the river is in or near the main channel. It is driven mainly by South Fork Georgetown, North Fork near Georgetown, combined load, confluence pressure, and lake influence. A high score does not automatically mean the property is flooding.">River Condition</div>
+          <div id="riverConditionStatus" class="status">...</div>
+          <div id="riverConditionScore" class="metric">--</div>
+          <div class="subtitle" id="riverConditionText">Loading river condition...</div>
         </div>
         <div class="card">
-          <h2>Lake Georgetown / dam watch</h2>
-          <div class="small" id="lakeSummary">Loading lake summary...</div>
-          <table style="margin-top:10px;">
-            <tbody id="lakeRows"></tbody>
-          </table>
+          <div class="label tip" title="Floodplain Activation estimates how likely water is leaving the main channel and spreading into lower terrain. It blends combined load, D and E downstream behavior, rain loading, and basin saturation.">Floodplain Activation</div>
+          <div id="floodplainActivationStatus" class="status">...</div>
+          <div id="floodplainActivationScore" class="metric">--</div>
+          <div class="subtitle" id="floodplainActivationText">Loading floodplain activation...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="Property Impact estimates the likelihood that meaningful parts of the property are being affected. It reacts more conservatively than River Condition and focuses on terrain reach like lower field, shed zone, and access threat.">Property Impact</div>
+          <div id="propertyImpactStatus" class="status">...</div>
+          <div id="propertyImpactScore" class="metric">--</div>
+          <div class="subtitle" id="propertyImpactText">Loading property impact...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="Flash Runoff Risk is the short-fuse runoff threat from recent and incoming rain. It is driven by alerts, rain signal, basin loading, and later by basin saturation.">Flash runoff risk</div>
+          <div id="flashStatus" class="status">...</div>
+          <div id="flashScore" class="metric">--</div>
+          <div class="subtitle" id="flashNowText">Loading flash runoff risk...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="Upstream Convergence measures how strongly the upstream branches are stacking water into the local system.">Upstream convergence</div>
+          <div id="convergenceStatus" class="status">...</div>
+          <div id="convergenceScore" class="metric">--</div>
+          <div class="subtitle" id="convergenceNowText">Loading convergence...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="North Fork / Lake Georgetown reflects reservoir and post-dam influence on the local North Fork contribution.">North Fork / Lake Georgetown</div>
+          <div id="damStatus" class="status">...</div>
+          <div id="damScore" class="metric">--</div>
+          <div class="subtitle" id="damNowText">Loading North Fork / lake context...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="This compares the current North and South fork loading against the July 2025 flood reference so you can see how current fork load stacks up against that major event.">North/South San Gabriel Load + July 2025 Comparison</div>
+          <div id="historicalMetric" class="metric">--</div>
+          <div class="small" id="historicalText">Loading fork-load comparison...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="Operational Hydrology measures how much local hydrologic reasoning is already active in the app, including gauges, confluence logic, lead-time logic, analogs, and lake behavior.">Operational Hydrology</div>
+          <div id="operationalHydrologyStatus" class="status">...</div>
+          <div id="operationalHydrologyMetric" class="metric">--</div>
+          <div class="subtitle" id="operationalHydrologyText">Loading operational hydrology...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="Official Model Guidance reflects official outside hydrologic model integration such as NOAA National Water Model and WGRFC products. It can remain low even when the app's local operational reasoning is strong.">Official Model Guidance</div>
+          <div id="officialModelStatus" class="status">...</div>
+          <div id="officialModelMetric" class="metric">--</div>
+          <div class="subtitle" id="officialModelText">Loading official model guidance...</div>
         </div>
       </div>
-    </div>
 
-    <div class="card" style="margin-top:16px;">
+      <div class="two-col" style="margin-top:16px;">
+        <div class="card">
+          <h2>Why the system thinks this</h2>
+          <ul id="reasons"></ul>
+        </div>
+        <div class="card">
+          <h2>Basin Saturation Index</h2>
+          <div id="saturationStatus" class="status">...</div>
+          <div id="saturationMetric" class="metric">--</div>
+          <div class="small" id="saturationText">Loading basin saturation...</div>
+          <table style="margin-top:10px;"><tbody id="saturationRows"></tbody></table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="label">lake-georgetown-system</div>
+        <h2>Lake Georgetown system cluster</h2>
+        <div class="two-col">
+          <div class="card">
+            <h2>North Fork inflow to Lake Georgetown</h2>
+            <div id="northForkLakeGauge"></div>
+          </div>
+          <div class="card">
+            <h2>Lake Georgetown / dam watch</h2>
+            <div class="small" id="lakeSummary">Loading lake summary...</div>
+            <table style="margin-top:10px;"><tbody id="lakeRows"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
         <div class="label">upstream-south-fork-signals</div>
         <h2>South Fork upstream growth cluster</h2>
         <div class="two-gauge-col" id="southForkUpstreamCluster"></div>
@@ -209,52 +232,120 @@
         <div class="three-col" id="downstreamLoadCluster"></div>
       </div>
 
-<div class="two-col" style="margin-top:16px;">
-      <div class="card">
-        <h2>Active alerts</h2>
-        <div id="alerts"></div>
+      <div class="two-col" style="margin-top:16px;">
+        <div class="card">
+          <h2>Active alerts</h2>
+          <div id="alerts"></div>
+        </div>
+        <div class="card">
+          <h2>Model notes</h2>
+          <ul>
+            <li>River Condition can run hot even while Property Impact remains relatively low.</li>
+            <li>Floodplain Activation is the bridge between channel loading and real property consequence.</li>
+            <li>Property Impact should rise materially when the lower field, shed zone, or access zones are likely being reached.</li>
+          </ul>
+        </div>
       </div>
-      <div class="card">
-        <h2>Model notes</h2>
-        <ul>
-          <li>North Fork Reagan inflow gets less weight until lake rise, releases, or spillway proximity suggest dam concern.</li>
-          <li>South Fork at Hwy 183 is treated as a datum-based trend signal. Use its rise and sparkline more than the raw elevation number.</li>
-          <li>Property status now leans more on real river behavior, while still allowing early warning from heavy rain and feeder-basin convergence.</li>
-        </ul>
-      </div>
-    </div>
 
-    <div class="two-col" style="margin-top:16px;">
-      <div class="card">
-        <h2>Next 12 hours</h2>
-        <table>
-          <thead><tr><th>Time (CDT)</th><th>POP</th><th>Forecast</th></tr></thead>
-          <tbody id="forecastRows"></tbody>
-        </table>
+      <div class="two-col" style="margin-top:16px;">
+        <div class="card">
+          <h2>Next 12 hours</h2>
+          <table><thead><tr><th>Time (CDT)</th><th>POP</th><th>Forecast</th></tr></thead><tbody id="forecastRows"></tbody></table>
+        </div>
+        <div class="card">
+          <h2>Recent alerts sent</h2>
+          <div id="alertEvents" class="small"></div>
+        </div>
       </div>
-      <div class="card">
-        <h2>Recent alerts sent</h2>
-        <div id="alertEvents" class="small"></div>
-      </div>
-    </div>
 
-    <div class="card" style="margin-top:16px;">
+      <div class="card" style="margin-top:16px;">
         <h2>Recent property score history</h2>
         <svg id="propertyHistoryChart" class="spark" viewBox="0 0 600 120" preserveAspectRatio="none"></svg>
         <div class="small">Stored locally on the server so the monitor can compare recent trends and status changes.</div>
       </div>
-  </div>
-
-
     </div>
 
+    <div id="tab-forecast5" class="tab-panel">
+      <div class="grid" style="margin-top:16px;">
+        <div class="card">
+          <div class="label tip" title="Best current estimate of River Condition about 5 hours from now based on present loading, rise rates, feeder-basin rain, lake posture, and basin saturation.">5hr Expected River Condition</div>
+          <div id="f5RiverStatus" class="status">...</div>
+          <div id="f5RiverScore" class="metric">--</div>
+          <div class="subtitle" id="f5RiverText">Loading 5hr river forecast...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="Best current estimate of floodplain spread in about 5 hours based on river loading, downstream relationships, and basin saturation.">5hr Expected Floodplain Activation</div>
+          <div id="f5FloodStatus" class="status">...</div>
+          <div id="f5FloodScore" class="metric">--</div>
+          <div class="subtitle" id="f5FloodText">Loading 5hr floodplain forecast...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="Best current estimate of property consequence in about 5 hours. This is the most conservative of the forecast scores and tries to focus on meaningful property zones rather than channel-only danger.">5hr Expected Property Impact</div>
+          <div id="f5PropertyStatus" class="status">...</div>
+          <div id="f5PropertyScore" class="metric">--</div>
+          <div class="subtitle" id="f5PropertyText">Loading 5hr property forecast...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="Best current 5-hour estimate of short-fuse runoff from current rain, forecast rain, and basin saturation.">5hr Expected Flash Runoff Risk</div>
+          <div id="f5FlashStatus" class="status">...</div>
+          <div id="f5FlashScore" class="metric">--</div>
+          <div class="subtitle" id="f5FlashText">Loading 5hr flash-runoff forecast...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="Best current estimate of upstream branch stacking into the local system over the next 5 hours.">5hr Expected Upstream Convergence</div>
+          <div id="f5ConvStatus" class="status">...</div>
+          <div id="f5ConvScore" class="metric">--</div>
+          <div class="subtitle" id="f5ConvText">Loading 5hr convergence forecast...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="Best current estimate of North Fork and Lake Georgetown influence over the next 5 hours.">5hr Expected North Fork / Lake Influence</div>
+          <div id="f5DamStatus" class="status">...</div>
+          <div id="f5DamScore" class="metric">--</div>
+          <div class="subtitle" id="f5DamText">Loading 5hr North Fork / lake forecast...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="Best current estimate of the combined fork load index in about 5 hours.">5hr Expected North/South Load</div>
+          <div id="f5LoadStatus" class="status">...</div>
+          <div id="f5LoadMetric" class="metric">--</div>
+          <div class="subtitle" id="f5LoadText">Loading 5hr load forecast...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="Forecast confidence reflects gauge agreement, rainfall clarity, lake clarity, and whether the present storm narrative is coherent.">5hr Forecast Confidence</div>
+          <div id="f5ConfStatus" class="status">...</div>
+          <div id="f5ConfMetric" class="metric">--</div>
+          <div class="subtitle" id="f5ConfText">Loading 5hr confidence...</div>
+        </div>
+        <div class="card">
+          <div class="label tip" title="The highest terrain-impact zone the model currently expects could be reached in about 5 hours.">Expected Highest Reached Zone</div>
+          <div id="f5ZoneStatus" class="status">...</div>
+          <div id="f5ZoneMetric" class="metric">--</div>
+          <div class="subtitle" id="f5ZoneText">Loading 5hr impact zone...</div>
+        </div>
+      </div>
+      <div class="two-col" style="margin-top:16px;">
+        <div class="card">
+          <h2>5hr Forecast Drivers</h2>
+          <table><tbody id="f5DriverRows"></tbody></table>
+        </div>
+        <div class="card">
+          <h2>5hr Forecast Notes</h2>
+          <ul>
+            <li>These are best-current estimates based on present gauges, basin loading, lake posture, and local travel-time assumptions.</li>
+            <li>The 5hr view is directional and operational. It is not a guaranteed crest or depth forecast.</li>
+            <li>Basin Saturation Index pushes floodplain and property forecasts hotter when the ground is already primed.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
 
-    <div id="tab-map" class="tab-panel">
+<div id="tab-map" class="tab-panel">
       <div class="card" style="margin-top:16px;">
         <div class="label">map-view</div>
         <h2>Map View</h2>
         <div class="map-controls">
+          <label><input type="checkbox" id="toggleRadarLayer" onchange="toggleRadarLayer()" checked> Live radar</label>
           <label><input type="checkbox" id="toggleFloodplainLayer" onchange="toggleFloodplainLayer()" checked> Floodplain overlay</label>
+          <label><input type="checkbox" id="toggleBasinLayer" onchange="toggleBasinLayer()" checked> Feeder basins</label>
           <label><input type="checkbox" id="toggleNearbyUsgs" onchange="toggleNearbyUsgsLayer()" checked> Nearby USGS Stations</label>
           <label><input type="checkbox" id="toggleFollowWaterMode" onchange="toggleFollowWaterMode()"> Follow the water</label>
           <span class="small" id="nearbyUsgsStatus">Loading nearby USGS stations…</span>
@@ -266,7 +357,9 @@
           <span class="source-tag">North Fork / South Fork gauges</span>
           <span class="source-tag">Confluence</span>
           <span class="source-tag">Downstream loading points</span>
+          <span class="source-tag">Live radar overlay</span>
           <span class="source-tag">Floodplain overlay</span>
+          <span class="source-tag">Feeder basin polygons</span>
           <span class="source-tag">Nearby USGS stations overlay</span>
           <span class="source-tag">Follow-the-water highlight</span>
         </div>
@@ -282,6 +375,8 @@
             <li>The South Fork chain shows upstream early-warning points and the Georgetown local threat point.</li>
             <li>The new D marker shows the Berry Creek + San Gabriel convergence, and the E marker shows the downstream Weir crossing after that added influence.</li>
             <li>The confluence marker now sits in the east-side merge area where the North and South forks visibly converge before the downstream loading story continues.</li>
+            <li>The live radar overlay gives a refreshable visual of active rainfall over the corridor and feeder basins.</li>
+            <li>The feeder basin polygons show the North Fork and South Fork collection areas that matter most to the property.</li>
             <li>The FEMA floodplain overlay gives context for where overbank risk matters most along the corridor.</li>
           </ul>
         </div>
@@ -305,35 +400,31 @@
         <div class="mini-bar"><div id="forecastReadinessBar" class="mini-bar-fill" style="width:0%"></div></div>
       </div>
 
-      <div class="card" style="margin-top:16px;">
-        <div class="label">mrms-observed-rainfall</div>
-        <h2>MRMS Observed Rainfall</h2>
-        <div id="mrmsStatus" class="status">...</div>
-        <div id="mrmsMetric" class="metric">--</div>
-        <div class="small" id="mrmsText">Loading MRMS observed rainfall...</div>
-        <table style="margin-top:10px;">
-          <tbody id="mrmsRows"></tbody>
-        </table>
-      </div>
-
-      <div class="three-col" style="margin-top:16px;">
+      <div class="four-col" style="margin-top:16px;">
         <div class="card">
           <div class="label">live-forcing</div>
-          <h3>Live Forcing</h3>
+          <h3 class="tip" title="Live Forcing summarizes whether observed rainfall, local forecast forcing, official rainfall threat, and reservoir posture are available.">Live Forcing</h3>
           <div id="liveForcingStatus" class="status">...</div>
           <div id="liveForcingMetric" class="metric">--</div>
           <div class="small" id="liveForcingText">Loading live forcing...</div>
         </div>
         <div class="card">
-          <div class="label">hydrologic-guidance</div>
-          <h3>Hydrologic Guidance</h3>
-          <div id="hydroGuidanceStatus" class="status">...</div>
-          <div id="hydroGuidanceMetric" class="metric">--</div>
-          <div class="small" id="hydroGuidanceText">Loading hydrologic guidance...</div>
+          <div class="label">operational-hydrology</div>
+          <h3 class="tip" title="Operational Hydrology reflects the app's built-in local hydrologic reasoning: gauges, confluence logic, lead-time logic, analogs, and lake behavior.">Operational Hydrology</h3>
+          <div id="operationalHydroStatus2" class="status">...</div>
+          <div id="operationalHydroMetric2" class="metric">--</div>
+          <div class="small" id="operationalHydroText2">Loading operational hydrology...</div>
+        </div>
+        <div class="card">
+          <div class="label">official-model-guidance</div>
+          <h3 class="tip" title="Official Model Guidance reflects official outside hydrologic forecast model integration such as NOAA National Water Model and WGRFC products.">Official Model Guidance</h3>
+          <div id="officialGuidanceStatus2" class="status">...</div>
+          <div id="officialGuidanceMetric2" class="metric">--</div>
+          <div class="small" id="officialGuidanceText2">Loading official guidance...</div>
         </div>
         <div class="card">
           <div class="label">pattern-risk</div>
-          <h3>Pattern Risk</h3>
+          <h3 class="tip" title="Pattern Risk reflects longer-horizon wet-pattern and Gulf/tropical context for 6 to 14 day posture.">Pattern Risk</h3>
           <div id="patternRiskStatus" class="status">...</div>
           <div id="patternRiskMetric" class="metric">--</div>
           <div class="small" id="patternRiskText">Loading pattern risk...</div>
@@ -560,6 +651,17 @@
     let refreshTimer = null;
     let countdownTimer = null;
     let nextRefreshAt = null;
+
+    // HTML escape function to prevent XSS attacks
+    function escapeHtml(unsafe) {
+      if (unsafe === null || unsafe === undefined) return '';
+      return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
 
     function defaultThresholdSettings() {
       return {
@@ -788,6 +890,8 @@ ${topReasons}`;
     let nearbyUsgsLayer = null;
     let nearbyUsgsLoaded = false;
     let floodplainLayer = null;
+    let radarLayer = null;
+    let basinLayer = null;
     let basePathLayers = {};
     let followWaterLayer = null;
 
@@ -983,12 +1087,93 @@ ${topReasons}`;
         ${thresholdLinesHtml(stage, point.key)}`;
     }
 
+
+    function createRadarLayer() {
+      return L.tileLayer.wms('https://nowcoast.noaa.gov/arcgis/services/nowcoast/radar_meteo_imagery_nexrad_time/MapServer/WMSServer', {
+        layers: '1',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.72,
+        attribution: 'NOAA nowCOAST radar',
+        version: '1.3.0'
+      });
+    }
+
+    function toggleRadarLayer() {
+      const checked = document.getElementById('toggleRadarLayer')?.checked;
+      if (!riverMap) return;
+      if (!radarLayer) radarLayer = createRadarLayer();
+      if (checked) {
+        if (!riverMap.hasLayer(radarLayer)) radarLayer.addTo(riverMap);
+      } else {
+        if (riverMap.hasLayer(radarLayer)) riverMap.removeLayer(radarLayer);
+      }
+    }
+
+    function createBasinLayer() {
+      const group = L.layerGroup();
+
+      const northForkBasin = [
+        [30.783, -97.958],
+        [30.785, -97.868],
+        [30.758, -97.792],
+        [30.719, -97.735],
+        [30.676, -97.722],
+        [30.669, -97.779],
+        [30.703, -97.890],
+        [30.745, -97.955]
+      ];
+
+      const southForkBasin = [
+        [30.733, -97.949],
+        [30.700, -97.930],
+        [30.642, -97.902],
+        [30.598, -97.858],
+        [30.590, -97.774],
+        [30.616, -97.711],
+        [30.655, -97.688],
+        [30.688, -97.744],
+        [30.718, -97.833]
+      ];
+
+      const northPoly = L.polygon(northForkBasin, {
+        color: '#8cf0c2',
+        weight: 3,
+        fillColor: '#8cf0c2',
+        fillOpacity: 0.24,
+        dashArray: '8,4'
+      }).bindPopup('<div class="popup-title">North Fork feeder basin</div><div class="small">Operational feeder-basin overlay for North Fork / Lake Georgetown loading context.</div>');
+
+      const southPoly = L.polygon(southForkBasin, {
+        color: '#ffc48c',
+        weight: 3,
+        fillColor: '#ffc48c',
+        fillOpacity: 0.24,
+        dashArray: '8,4'
+      }).bindPopup('<div class="popup-title">South Fork feeder basin</div><div class="small">Operational feeder-basin overlay for South Fork loading context upstream of Georgetown.</div>');
+
+      northPoly.addTo(group);
+      southPoly.addTo(group);
+      return group;
+    }
+
+    function toggleBasinLayer() {
+      const checked = document.getElementById('toggleBasinLayer')?.checked;
+      if (!riverMap) return;
+      if (!basinLayer) basinLayer = createBasinLayer();
+      if (checked) {
+        if (!riverMap.hasLayer(basinLayer)) basinLayer.addTo(riverMap);
+      } else {
+        if (riverMap.hasLayer(basinLayer)) riverMap.removeLayer(basinLayer);
+      }
+    }
+
     function createFloodplainLayer() {
       return L.tileLayer.wms('https://hazards.fema.gov/arcgis/rest/services/public/NFHLWMS/MapServer/WMSServer', {
         layers: '1,4,5',
         format: 'image/png',
         transparent: true,
-        opacity: 0.45,
+        opacity: 0.72,
         attribution: 'FEMA NFHL'
       });
     }
@@ -1177,9 +1362,19 @@ ${topReasons}`;
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(riverMap);
 
+      radarLayer = createRadarLayer();
+      if (document.getElementById('toggleRadarLayer')?.checked !== false) {
+        radarLayer.addTo(riverMap);
+      }
+
       floodplainLayer = createFloodplainLayer();
       if (document.getElementById('toggleFloodplainLayer')?.checked !== false) {
         floodplainLayer.addTo(riverMap);
+      }
+
+      basinLayer = createBasinLayer();
+      if (document.getElementById('toggleBasinLayer')?.checked !== false) {
+        basinLayer.addTo(riverMap);
       }
 
       MAP_POINTS.forEach(point => {
@@ -1232,7 +1427,10 @@ ${topReasons}`;
 
       const mapStatus = document.getElementById('mapStatusText');
       if (mapStatus && !document.getElementById('toggleFollowWaterMode')?.checked) {
-        mapStatus.textContent = `Map markers refreshed from snapshot: ${new Date(data.generatedAt).toLocaleString()}`;
+        const radarOn = document.getElementById('toggleRadarLayer')?.checked ? 'radar on' : 'radar off';
+        const basinsOn = document.getElementById('toggleBasinLayer')?.checked ? 'basins on' : 'basins off';
+        const floodplainOn = document.getElementById('toggleFloodplainLayer')?.checked ? 'floodplain on' : 'floodplain off';
+        mapStatus.textContent = `Map markers refreshed from snapshot: ${new Date(data.generatedAt).toLocaleString()} | ${radarOn} | ${basinsOn} | ${floodplainOn}`;
       }
 
       const mapSourceRows = document.getElementById('mapSourceRows');
@@ -1241,7 +1439,9 @@ ${topReasons}`;
           ['Property marker', 'App property coordinate / pinned property marker'],
           ['Gauge markers', 'USGS station locations and app gauge readings, including the new D convergence point and E downstream crossing'],
           ['Confluence marker', 'Operational merge point of the North and South forks at the exact C coordinate you specified'],
+          ['Live radar overlay', 'NOAA nowCOAST radar WMS overlay'],
           ['Floodplain overlay', 'FEMA NFHL WMS overlay'],
+          ['Feeder basin polygons', 'Operational North Fork and South Fork basin polygons'],
           ['Nearby stations overlay', 'USGS monitoring-locations API filtered to river-relevant stations'],
           ['Follow the water mode', 'Model-derived highlight from upstream gauges to confluence to downstream loading'],
           ['Basemap', 'OpenStreetMap tile layer']
@@ -1274,11 +1474,7 @@ ${topReasons}`;
     }
 
     function renderForecastInputs(data) {
-      const mrmsAvailable = (data?.mrms?.availableCount || 0) > 0;
-      const sources = FORECAST_INPUT_LIBRARY.map((s) => {
-        if (s.key === 'mrms') return { ...s, currentStatus: mrmsAvailable ? 'active' : 'planned' };
-        return s;
-      });
+      const sources = FORECAST_INPUT_LIBRARY;
       const activeWeighted = sources.reduce((acc, s) => {
         const statusWeight = s.currentStatus === 'active' ? 1 : s.currentStatus === 'partial' ? 0.55 : 0;
         return acc + (s.analystValue * 20 * statusWeight);
@@ -1313,14 +1509,20 @@ ${topReasons}`;
       const liveScore = avgBucket('live');
       const hydroScore = avgBucket('hydro');
       const patternScore = avgBucket('pattern');
+      const opHydroScore = data?.__currentModel?.operationalHydrology?.score || 0;
+      const offGuideScore = data?.__currentModel?.officialModelGuidance?.score || 8;
 
       setStatusEl('liveForcingStatus', bucketStatus(liveScore));
       document.getElementById('liveForcingMetric').textContent = `${liveScore}%`;
       document.getElementById('liveForcingText').textContent = 'Observed rainfall, local forecast forcing, official rainfall threat, and reservoir posture.';
 
-      setStatusEl('hydroGuidanceStatus', bucketStatus(hydroScore));
-      document.getElementById('hydroGuidanceMetric').textContent = `${hydroScore}%`;
-      document.getElementById('hydroGuidanceText').textContent = 'Hydrologic model guidance and regional river forecast context for 1 to 10 days.';
+      setStatusEl('operationalHydroStatus2', scoreToStatus(opHydroScore));
+      document.getElementById('operationalHydroMetric2').textContent = `${Math.round(opHydroScore)}%`;
+      document.getElementById('operationalHydroText2').textContent = 'Gauge logic, confluence reasoning, analogs, and lake context are already active.';
+
+      setStatusEl('officialGuidanceStatus2', scoreToStatus(offGuideScore));
+      document.getElementById('officialGuidanceMetric2').textContent = `${Math.round(offGuideScore)}%`;
+      document.getElementById('officialGuidanceText2').textContent = 'Official outside model feeds like NWM and WGRFC are still mostly unwired.';
 
       setStatusEl('patternRiskStatus', bucketStatus(patternScore));
       document.getElementById('patternRiskMetric').textContent = `${patternScore}%`;
@@ -1338,27 +1540,10 @@ ${topReasons}`;
         </tr>`;
       }).join('');
 
-      const propertyMrms = data?.mrms?.points?.property || null;
-      const northMrms = data?.mrms?.points?.northFork || null;
-      const southMrms = data?.mrms?.points?.southFork || null;
-      const localMrms = data?.mrms?.points?.localArea || null;
-      setStatusEl('mrmsStatus', mrmsAvailable ? 'GREEN' : 'ORANGE');
-      document.getElementById('mrmsMetric').textContent = propertyMrms?.qpe6h == null ? '--' : `${fmt(propertyMrms.qpe6h)} in`;
-      document.getElementById('mrmsText').textContent = mrmsAvailable
-        ? `Observed radar-only rainfall from NOAA MRMS. Property 6h accumulation shown above.`
-        : 'MRMS observed rainfall is not available in this snapshot yet.';
-      document.getElementById('mrmsRows').innerHTML = [
-        ['Property', propertyMrms?.qpe1h == null ? '--' : `${fmt(propertyMrms.qpe1h)} / ${fmt(propertyMrms.qpe3h)} / ${fmt(propertyMrms.qpe6h)} / ${fmt(propertyMrms.qpe24h)} in (1h/3h/6h/24h)`],
-        ['North Fork Basin', northMrms?.qpe1h == null ? '--' : `${fmt(northMrms.qpe1h)} / ${fmt(northMrms.qpe3h)} / ${fmt(northMrms.qpe6h)} / ${fmt(northMrms.qpe24h)} in`],
-        ['South Fork Basin', southMrms?.qpe1h == null ? '--' : `${fmt(southMrms.qpe1h)} / ${fmt(southMrms.qpe3h)} / ${fmt(southMrms.qpe6h)} / ${fmt(southMrms.qpe24h)} in`],
-        ['Local Area', localMrms?.qpe1h == null ? '--' : `${fmt(localMrms.qpe1h)} / ${fmt(localMrms.qpe3h)} / ${fmt(localMrms.qpe6h)} / ${fmt(localMrms.qpe24h)} in`],
-        ['MRMS valid time', propertyMrms?.validEndTime ? new Date(propertyMrms.validEndTime).toLocaleString() : 'unavailable']
-      ].map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
-
       const contribRows = [
         ['Nowcast strength', 'Current gauges + feeder basin + weather + lake posture already make short-horizon operations useful.'],
-        ['Biggest current gap', mrmsAvailable ? 'Official hydrologic forecast guidance is still missing.' : 'Observed basin rainfall and official hydrologic forecast guidance are still missing.'],
-        ['Most valuable next source', mrmsAvailable ? 'NOAA National Water Model' : 'MRMS observed rainfall'],
+        ['Biggest current gap', 'Official hydrologic forecast guidance is still missing, even though local operational hydrology is already active.'],
+        ['Most valuable next source', 'NOAA National Water Model'],
         ['Most valuable model layer', 'NOAA National Water Model'],
         ['Pattern-risk gap', 'CPC outlooks are not wired yet.']
       ];
@@ -1422,6 +1607,102 @@ ${topReasons}`;
       return { status: 'GREEN', label: 'Low' };
     }
 
+
+    function clamp(n, min=0, max=100) { return Math.max(min, Math.min(max, n)); }
+    function scoreToStatus(score) {
+      const s = Number(score || 0);
+      if (s >= 75) return 'RED';
+      if (s >= 50) return 'ORANGE';
+      if (s >= 25) return 'YELLOW';
+      return 'GREEN';
+    }
+    function gaugeByKind(data, kind) { return (data?.gauges || []).find(g => g?.gauge?.kind === kind) || null; }
+    function latestStage(data, kind) { return Number(gaugeByKind(data, kind)?.latest?.['00065']?.value || 0); }
+    function stageRate(data, kind) { return Number(gaugeByKind(data, kind)?.trends?.['00065']?.deltaPerHour || 0); }
+    function weightedRecentHistory(data) { return (data?.history || []).slice(-288) || []; }
+    function basinSaturationIndex(data) {
+      const history = weightedRecentHistory(data);
+      const recent24 = history.slice(-144);
+      const recent72 = history.slice(-288);
+      const avgQpf = (items, key) => {
+        if (!items.length) return 0;
+        const vals = items.map(h => Number(h?.basinWeather?.[key]?.profile?.qpf24hIn || 0)).filter(v => !Number.isNaN(v));
+        return vals.length ? vals.reduce((a,b)=>a+b,0) / vals.length : 0;
+      };
+      const avg24 = (avgQpf(recent24, 'northFork') + avgQpf(recent24, 'southFork') + avgQpf(recent24, 'localArea')) / 3;
+      const avg72 = (avgQpf(recent72, 'northFork') + avgQpf(recent72, 'southFork') + avgQpf(recent72, 'localArea')) / 3;
+      const alertCount = recent72.reduce((acc, h) => acc + (((h?.weather?.alerts?.features || []).some(f => /flood|flash flood/i.test(f?.properties?.event || ''))) ? 1 : 0), 0);
+      const gaugeLoad = (latestStage(data, 'northFork') + latestStage(data, 'southForkGeorgetown')) * 1.25;
+      const score = clamp((avg24 * 12) + (avg72 * 6) + (alertCount * 1.5) + gaugeLoad);
+      const status = scoreToStatus(score);
+      const label = status === 'RED' ? 'Ground looks primed' : status === 'ORANGE' ? 'Ground loading is elevated' : status === 'YELLOW' ? 'Ground is getting primed' : 'Ground absorbency still helping';
+      return {
+        score: Math.round(score),
+        status,
+        label,
+        rows: [
+          ['24h rain-memory proxy', `${fmt(avg24)} in average 24h feeder-basin forecast memory`],
+          ['72h rain-memory proxy', `${fmt(avg72)} in average 24h feeder-basin forecast memory`],
+          ['Recent flood / flash alerts', `${alertCount}`],
+          ['Current channel-load proxy', `${fmt(gaugeLoad)} combined channel-load factor`]
+        ]
+      };
+    }
+    function computeCurrentModel(data) {
+      const sc = data?.scorecard || {};
+      const north = latestStage(data, 'northFork');
+      const south = latestStage(data, 'southForkGeorgetown');
+      const berry = latestStage(data, 'berryCreek');
+      const weir = latestStage(data, 'downstreamWeir');
+      const northRate = stageRate(data, 'northFork');
+      const southRate = stageRate(data, 'southForkGeorgetown');
+      const berryRate = stageRate(data, 'berryCreek');
+      const weirRate = stageRate(data, 'downstreamWeir');
+      const combined = north + south;
+      const sat = basinSaturationIndex(data);
+      const riverScore = clamp((Number(sc?.scores?.river || 0) * 0.45) + (combined * 1.8) + (Math.max(northRate,0) * 30) + (Math.max(southRate,0) * 35) + (Number(sc?.scores?.northForkDam || 0) * 0.12) + (Number(sc?.scores?.upstreamConvergence || 0) * 0.10));
+      const floodScore = clamp((riverScore * 0.45) + (Math.max(berryRate,0) * 22) + (Math.max(weirRate,0) * 15) + (berry * 0.9) + (weir * 0.5) + (sat.score * 0.28));
+      const propertyScore = clamp(((floodScore * 0.48) + (Number(sc?.scores?.property || 0) * 0.25) + (sat.score * 0.12) + ((berry > 8 ? 10 : berry > 5 ? 5 : 0))) * 0.75);
+      const opHydro = clamp(38 + (data?.gauges || []).filter(g => Object.keys(g?.latest || {}).length).length * 4 + (sc?.historicalComparison ? 8 : 0) + (data?.lake?.lakeMeta?.currentPoolElevationFt != null ? 8 : 0) + (Number(sc?.scores?.upstreamConvergence || 0) * 0.10));
+      const offGuidance = 8;
+      return {
+        combined,
+        saturation: sat,
+        riverCondition: { score: Math.round(riverScore), status: scoreToStatus(riverScore), text: `Combined fork load ${fmt(combined)} with North ${fmt(north)} ft and South ${fmt(south)} ft. Rise rates N ${fmt(northRate)} ft/hr, S ${fmt(southRate)} ft/hr.` },
+        floodplainActivation: { score: Math.round(floodScore), status: scoreToStatus(floodScore), text: `Driven by combined load, D/E downstream relationship, and saturation ${sat.score}%.` },
+        propertyImpact: { score: Math.round(propertyScore), status: scoreToStatus(propertyScore), text: `Likely highest current zone: ${impactZone(propertyScore)}.` },
+        operationalHydrology: { score: Math.round(opHydro), status: scoreToStatus(opHydro), text: 'Local gauge logic, confluence logic, lead-time reasoning, analogs, and lake context are active.' },
+        officialModelGuidance: { score: Math.round(offGuidance), status: scoreToStatus(offGuidance), text: 'Official outside model guidance is still largely unwired, so this stays low for now.' }
+      };
+    }
+    function impactZone(score) {
+      if (score >= 85) return 'Access / Structure Threat';
+      if (score >= 60) return 'Shed Zone';
+      if (score >= 35) return 'Lower Field';
+      if (score >= 15) return 'Near-Bank Zone';
+      return 'Main Channel';
+    }
+    function compute5hrForecast(data, current) {
+      const northRate = Math.max(stageRate(data, 'northFork'), 0);
+      const southRate = Math.max(stageRate(data, 'southForkGeorgetown'), 0);
+      const berryRate = Math.max(stageRate(data, 'berryCreek'), 0);
+      const basinNorth = getBasinLoading(data, 'northFork');
+      const basinSouth = getBasinLoading(data, 'southFork');
+      const basinLocal = getBasinLoading(data, 'localArea');
+      const rainBoost = ((Number(basinNorth.effective6h||0) + Number(basinSouth.effective6h||0) + Number(basinLocal.effective6h||0)) / 3) * 8;
+      const satBoost = current.saturation.score * 0.16;
+      const convBoost = Number(data?.scorecard?.scores?.upstreamConvergence || 0) * 0.18;
+      const river = clamp(current.riverCondition.score + northRate*20 + southRate*26 + rainBoost*0.4 + satBoost*0.25 + convBoost*0.2);
+      const flood = clamp(current.floodplainActivation.score + berryRate*16 + rainBoost*0.35 + satBoost*0.45 + (river-current.riverCondition.score)*0.4);
+      const property = clamp((current.propertyImpact.score*0.7) + (flood*0.4) + satBoost*0.25);
+      const flash = clamp(Number(data?.scorecard?.scores?.flashRunoff || 0) + rainBoost*0.7 + satBoost*0.3);
+      const conv = clamp(Number(data?.scorecard?.scores?.upstreamConvergence || 0) + northRate*18 + southRate*22);
+      const dam = clamp(Number(data?.scorecard?.scores?.northForkDam || 0) + northRate*16 + satBoost*0.15);
+      const load = clamp(current.combined*2.4 + northRate*18 + southRate*18);
+      const confidenceBase = (data?.gauges || []).filter(g => Object.keys(g?.latest||{}).length).length * 8 + (data?.lake?.lakeMeta?.releaseCfs != null ? 10 : 0) + (data?.weather?.rainSignal?.next12Hours?.length ? 18 : 0);
+      const confidence = clamp(confidenceBase + (current.operationalHydrology.score*0.25) - (Math.abs(northRate-southRate)*10));
+      return { river, flood, property, flash, conv, dam, load, confidence, zone: impactZone(property) };
+    }
     function setStatusEl(id, status) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -1447,33 +1728,21 @@ ${topReasons}`;
 
     function getBasinLoading(data, key) {
       const profile = data?.basinWeather?.[key]?.profile || {};
-      const mrmsPoint = data?.mrms?.points?.[key] || null;
-      const observed1h = mrmsPoint?.qpe1h ?? null;
-      const observed3h = mrmsPoint?.qpe3h ?? null;
-      const observed6h = mrmsPoint?.qpe6h ?? null;
-      const observed24h = mrmsPoint?.qpe24h ?? null;
       const qpf6h = Number(profile.qpf6hIn || 0);
       const qpf12h = Number(profile.qpf12hIn || 0);
       const qpf24h = Number(profile.qpf24hIn || 0);
       const popMax6h = Number(profile.popMax6h || 0);
       const intense = profile.intenseRainSignal ? 1 : 0;
 
-      const effective6h = observed6h != null
-        ? observed6h
-        : (qpf6h > 0 ? qpf6h : Number((((popMax6h / 100) * 1.25) + (intense * 0.35)).toFixed(2)));
-
+      const effective6h = qpf6h > 0 ? qpf6h : Number((((popMax6h / 100) * 1.25) + (intense * 0.35)).toFixed(2));
       return {
-        observed1h,
-        observed3h,
-        observed6h,
-        observed24h,
         qpf6h,
         qpf12h,
         qpf24h,
-        effective6h: Number(Number(effective6h || 0).toFixed(2)),
+        effective6h: Number(effective6h.toFixed(2)),
         popMax6h,
         intense,
-        sourceNote: observed6h != null ? 'MRMS observed rainfall + NWS forecast precipitation' : (qpf6h > 0 ? 'NWS grid forecast precipitation' : 'NWS forecast fallback estimate'),
+        sourceNote: qpf6h > 0 ? 'NWS grid forecast precipitation' : 'NWS forecast fallback estimate',
         nextEffect: basinEffectLabel(key)
       };
     }
@@ -1922,21 +2191,91 @@ ${topReasons}`;
       if (basinUpdatedEl) basinUpdatedEl.textContent = `Feeder Basin tab data refreshes with the same snapshot: ${new Date(data.generatedAt).toLocaleString()}`;
 
       const sc = data.scorecard;
-      document.getElementById('propertyStatus').className = `status ${statusClass(sc.statuses.property)}`;
-      document.getElementById('propertyStatus').textContent = sc.statuses.property;
-      document.getElementById('propertyScore').textContent = sc.scores.property;
-      document.getElementById('riverStatus').className = `status ${statusClass(sc.statuses.river)}`;
-      document.getElementById('riverStatus').textContent = sc.statuses.river;
-      document.getElementById('riverScore').textContent = sc.scores.river;
+      const currentModel = computeCurrentModel(data);
+      data.__currentModel = currentModel;
+      const forecast5 = compute5hrForecast(data, currentModel);
+
+      setStatusEl('riverConditionStatus', currentModel.riverCondition.status);
+      document.getElementById('riverConditionScore').textContent = currentModel.riverCondition.score;
+      document.getElementById('riverConditionText').textContent = currentModel.riverCondition.text;
+
+      setStatusEl('floodplainActivationStatus', currentModel.floodplainActivation.status);
+      document.getElementById('floodplainActivationScore').textContent = currentModel.floodplainActivation.score;
+      document.getElementById('floodplainActivationText').textContent = currentModel.floodplainActivation.text;
+
+      setStatusEl('propertyStatus', currentModel.propertyImpact.status);
+      document.getElementById('propertyScore').textContent = currentModel.propertyImpact.score;
+      setStatusEl('propertyImpactStatus', currentModel.propertyImpact.status);
+      document.getElementById('propertyImpactScore').textContent = currentModel.propertyImpact.score;
+      document.getElementById('propertyImpactText').textContent = currentModel.propertyImpact.text;
+
+      setStatusEl('operationalHydrologyStatus', currentModel.operationalHydrology.status);
+      document.getElementById('operationalHydrologyMetric').textContent = `${currentModel.operationalHydrology.score}%`;
+      document.getElementById('operationalHydrologyText').textContent = currentModel.operationalHydrology.text;
+
+      setStatusEl('officialModelStatus', currentModel.officialModelGuidance.status);
+      document.getElementById('officialModelMetric').textContent = `${currentModel.officialModelGuidance.score}%`;
+      document.getElementById('officialModelText').textContent = currentModel.officialModelGuidance.text;
+
+      setStatusEl('saturationStatus', currentModel.saturation.status);
+      document.getElementById('saturationMetric').textContent = `${currentModel.saturation.score}%`;
+      document.getElementById('saturationText').textContent = currentModel.saturation.label;
+      document.getElementById('saturationRows').innerHTML = currentModel.saturation.rows.map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+
+      setStatusEl('f5RiverStatus', scoreToStatus(forecast5.river));
+      document.getElementById('f5RiverScore').textContent = Math.round(forecast5.river);
+      document.getElementById('f5RiverText').textContent = 'Best-current 5hr river estimate driven by rise rates, feeder rain, and fork load.';
+
+      setStatusEl('f5FloodStatus', scoreToStatus(forecast5.flood));
+      document.getElementById('f5FloodScore').textContent = Math.round(forecast5.flood);
+      document.getElementById('f5FloodText').textContent = 'Best-current 5hr spread estimate using river load, downstream relationship, and saturation.';
+
+      setStatusEl('f5PropertyStatus', scoreToStatus(forecast5.property));
+      document.getElementById('f5PropertyScore').textContent = Math.round(forecast5.property);
+      document.getElementById('f5PropertyText').textContent = `Expected highest zone in 5hr: ${forecast5.zone}.`;
+
+      setStatusEl('f5FlashStatus', scoreToStatus(forecast5.flash));
+      document.getElementById('f5FlashScore').textContent = Math.round(forecast5.flash);
+      document.getElementById('f5FlashText').textContent = 'Short-fuse runoff estimate using current rain posture and saturation.';
+
+      setStatusEl('f5ConvStatus', scoreToStatus(forecast5.conv));
+      document.getElementById('f5ConvScore').textContent = Math.round(forecast5.conv);
+      document.getElementById('f5ConvText').textContent = 'Expected upstream branch stacking over the next 5 hours.';
+
+      setStatusEl('f5DamStatus', scoreToStatus(forecast5.dam));
+      document.getElementById('f5DamScore').textContent = Math.round(forecast5.dam);
+      document.getElementById('f5DamText').textContent = 'Expected North Fork / lake influence over the next 5 hours.';
+
+      setStatusEl('f5LoadStatus', scoreToStatus(forecast5.load));
+      document.getElementById('f5LoadMetric').textContent = Math.round(forecast5.load);
+      document.getElementById('f5LoadText').textContent = 'Projected combined fork-load pressure over the next 5 hours.';
+
+      const confStatus = forecast5.confidence >= 75 ? 'GREEN' : forecast5.confidence >= 45 ? 'YELLOW' : 'ORANGE';
+      setStatusEl('f5ConfStatus', confStatus);
+      document.getElementById('f5ConfMetric').textContent = `${Math.round(forecast5.confidence)}%`;
+      document.getElementById('f5ConfText').textContent = 'Confidence reflects gauge agreement, rainfall clarity, and lake visibility.';
+
+      setStatusEl('f5ZoneStatus', scoreToStatus(forecast5.property));
+      document.getElementById('f5ZoneMetric').textContent = forecast5.zone;
+      document.getElementById('f5ZoneText').textContent = 'Best current estimate of the highest property-impact zone that could be reached in about 5 hours.';
+      document.getElementById('f5DriverRows').innerHTML = [
+        ['Dominant fork pressure', stageRate(data, 'southForkGeorgetown') >= stageRate(data, 'northFork') ? 'South Fork leading' : 'North Fork leading'],
+        ['Basin saturation', `${currentModel.saturation.score}% (${currentModel.saturation.status})`],
+        ['Combined current load', `${fmt(currentModel.combined)}`],
+        ['Most important caution', '5hr view is operational and directional, not a guaranteed crest/depth forecast.']
+      ].map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
       document.getElementById('flashStatus').className = `status ${statusClass(sc.statuses.flashRunoff)}`;
       document.getElementById('flashStatus').textContent = sc.statuses.flashRunoff;
       document.getElementById('flashScore').textContent = sc.scores.flashRunoff;
+      document.getElementById('flashNowText').textContent = 'Short-fuse runoff threat from alerts, rain signal, and basin loading.';
       document.getElementById('convergenceStatus').className = `status ${statusClass(sc.statuses.upstreamConvergence)}`;
       document.getElementById('convergenceStatus').textContent = sc.statuses.upstreamConvergence;
       document.getElementById('convergenceScore').textContent = sc.scores.upstreamConvergence;
+      document.getElementById('convergenceNowText').textContent = 'Tracks how strongly upstream branches are stacking water into the local system.';
       document.getElementById('damStatus').className = `status ${statusClass(sc.statuses.northForkDam)}`;
       document.getElementById('damStatus').textContent = sc.statuses.northForkDam;
       document.getElementById('damScore').textContent = sc.scores.northForkDam;
+      document.getElementById('damNowText').textContent = 'Reservoir and post-dam influence on the North Fork contribution.';
 
       const hist = sc.historicalComparison;
       const northForkGauge = (data.gauges || []).find(g => g?.gauge?.kind === 'northFork');
@@ -1956,7 +2295,7 @@ ${topReasons}`;
           `Current South Fork Georgetown stage is ${fmt(hist.currentStageFt)} ft, which is ${fmt(hist.percentOfJuly2025, 1)}% of the July 2025 crest.`
         : 'North/South fork comparison unavailable.';
 
-      document.getElementById('reasons').innerHTML = sc.reasons.map(r => `<li>${r}</li>`).join('');
+      document.getElementById('reasons').innerHTML = sc.reasons.map(r => `<li>${escapeHtml(r)}</li>`).join('');
       const allGauges = data.gauges || [];
       const northForkLakeGauge = allGauges.find(g => g?.gauge?.kind === 'northForkUpstream');
       const northForkLocalGauge = allGauges.find(g => g?.gauge?.kind === 'northFork');
@@ -1989,7 +2328,7 @@ ${topReasons}`;
 
       const alerts = data.weather.alerts.features || [];
       document.getElementById('alerts').innerHTML = alerts.length
-        ? alerts.map(a => `<div style="margin-bottom:12px;"><strong>${a.properties.event}</strong><div class="small">${a.properties.headline || ''}</div></div>`).join('')
+        ? alerts.map(a => `<div style="margin-bottom:12px;"><strong>${escapeHtml(a.properties.event)}</strong><div class="small">${escapeHtml(a.properties.headline || '')}</div></div>`).join('')
         : '<div class="muted">No active alerts for the property point.</div>';
 
       const lakeMeta = data.lake?.lakeMeta || {};
@@ -2030,18 +2369,18 @@ ${topReasons}`;
       setStatusEl('southForkRainStatus', southRain.status);
       setStatusEl('localRainStatus', localRain.status);
 
-      document.getElementById('northForkRainMetric').textContent = northBasin.observed6h == null ? `${fmt(northBasin.effective6h)} in next 6h` : `${fmt(northBasin.observed6h)} in obs 6h`;
-      document.getElementById('southForkRainMetric').textContent = southBasin.observed6h == null ? `${fmt(southBasin.effective6h)} in next 6h` : `${fmt(southBasin.observed6h)} in obs 6h`;
-      document.getElementById('localRainMetric').textContent = localBasin.observed6h == null ? `${fmt(localBasin.effective6h)} in next 6h` : `${fmt(localBasin.observed6h)} in obs 6h`;
+      document.getElementById('northForkRainMetric').textContent = `${fmt(northBasin.effective6h)} in next 6h`;
+      document.getElementById('southForkRainMetric').textContent = `${fmt(southBasin.effective6h)} in next 6h`;
+      document.getElementById('localRainMetric').textContent = `${fmt(localBasin.effective6h)} in next 6h`;
 
-      document.getElementById('northForkRainText').textContent = `${northRain.label}. MRMS obs 6h: ${fmt(northBasin.observed6h)} in. QPF 12h: ${fmt(northBasin.qpf12h)} in. Source: ${northBasin.sourceNote}. Main effect likely next: ${northBasin.nextEffect}.`;
-      document.getElementById('southForkRainText').textContent = `${southRain.label}. MRMS obs 6h: ${fmt(southBasin.observed6h)} in. QPF 12h: ${fmt(southBasin.qpf12h)} in. Source: ${southBasin.sourceNote}. Main effect likely next: ${southBasin.nextEffect}.`;
-      document.getElementById('localRainText').textContent = `${localRain.label}. MRMS obs 6h: ${fmt(localBasin.observed6h)} in. QPF 12h: ${fmt(localBasin.qpf12h)} in. Source: ${localBasin.sourceNote}. Main effect likely next: ${localBasin.nextEffect}.`;
+      document.getElementById('northForkRainText').textContent = `${northRain.label}. QPF 12h: ${fmt(northBasin.qpf12h)} in. Source: ${northBasin.sourceNote}. Main effect likely next: ${northBasin.nextEffect}.`;
+      document.getElementById('southForkRainText').textContent = `${southRain.label}. QPF 12h: ${fmt(southBasin.qpf12h)} in. Source: ${southBasin.sourceNote}. Main effect likely next: ${southBasin.nextEffect}.`;
+      document.getElementById('localRainText').textContent = `${localRain.label}. QPF 12h: ${fmt(localBasin.qpf12h)} in. Source: ${localBasin.sourceNote}. Main effect likely next: ${localBasin.nextEffect}.`;
 
       document.getElementById('rainfallOutlookRows').innerHTML = [
-        ['North Fork Basin', `${northRain.label} | obs6 ${fmt(northBasin.observed6h)} in | qpf12 ${fmt(northBasin.qpf12h)} in | obs24 ${fmt(northBasin.observed24h)} in`, northBasin.nextEffect],
-        ['South Fork Basin', `${southRain.label} | obs6 ${fmt(southBasin.observed6h)} in | qpf12 ${fmt(southBasin.qpf12h)} in | obs24 ${fmt(southBasin.observed24h)} in`, southBasin.nextEffect],
-        ['Local Area', `${localRain.label} | obs6 ${fmt(localBasin.observed6h)} in | qpf12 ${fmt(localBasin.qpf12h)} in | obs24 ${fmt(localBasin.observed24h)} in`, localBasin.nextEffect]
+        ['North Fork Basin', `${northRain.label} | 6h ${fmt(northBasin.effective6h)} in | 12h ${fmt(northBasin.qpf12h)} in | 24h ${fmt(northBasin.qpf24h)} in`, northBasin.nextEffect],
+        ['South Fork Basin', `${southRain.label} | 6h ${fmt(southBasin.effective6h)} in | 12h ${fmt(southBasin.qpf12h)} in | 24h ${fmt(southBasin.qpf24h)} in`, southBasin.nextEffect],
+        ['Local Area', `${localRain.label} | 6h ${fmt(localBasin.effective6h)} in | 12h ${fmt(localBasin.qpf12h)} in | 24h ${fmt(localBasin.qpf24h)} in`, localBasin.nextEffect]
       ].map(([a,b,c]) => `<tr><td>${a}</td><td>${b}</td><td>${c}</td></tr>`).join('');
 
       const confidence = estimateConfidence(data);
@@ -2187,7 +2526,7 @@ ${topReasons}`;
     }).catch(err => {
       document.getElementById('propertyName').textContent = 'Unable to load dashboard';
       document.getElementById('updatedAt').textContent = err.message;
-      document.getElementById('gauges').innerHTML = `<div class="card"><div class="small" style="color:#ffb4b4;">Dashboard load failed: ${err.message}</div></div>`;
+      document.getElementById('gauges').innerHTML = `<div class="card"><div class="small" style="color:#ffb4b4;">Dashboard load failed: ${escapeHtml(err.message)}</div></div>`;
       document.getElementById('nextRefresh').textContent = 'Auto refresh unavailable until the dashboard loads correctly.';
     });
   </script>
